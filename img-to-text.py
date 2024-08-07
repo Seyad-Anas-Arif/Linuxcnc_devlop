@@ -3,6 +3,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import easyocr
+print("Welcome to IM_P")
 
 def increase_resolution(image):
     scale_factor = 1.5
