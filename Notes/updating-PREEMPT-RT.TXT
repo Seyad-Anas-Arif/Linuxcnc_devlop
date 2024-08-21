@@ -1,0 +1,51 @@
+#Ensure Dependencies
+sudo apt-get update
+// installing neccessory packages for preempt-rt kernel
+sudo apt-get install git bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64 libncurses-dev pkg-config
+//clone kernal source 
+git clone --depth=1 https://github.com/raspberrypi/linux -b rpi-6.6.y
+cd linux
+
+//Download and apply the RT patch:
+wget https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.6/older/patch-6.6.31-rt31.patch.xz
+xz -d patch-6.6.31-rt31.patch.xz
+patch -p1 < patch-6.6.31-rt31.patch
+
+// configure the kernal
+KERNEL=kernel7
+make bcm2711_defconfig
+
+//rt kernal config
+make menuconfig
+// select real time kernel in general setup
+
+//build the kernal- it will take some more time
+make -j$(nproc) Image modules dtbs
+(make -j2 Image modules dtbs) //to use only 2 core of raspberry  for build )
+
+//install the kernel
+sudo make modules_install
+
+// Copy the kernel and Device Tree blobs: 
+sudo cp arch/arm64/boot/Image /boot/firmware/kernel7.img
+sudo cp arch/arm64/boot/dts/*.dtb /boot/firmware
+(sudo cp arch/arm64/boot/dts/broadcom/*.dtb /boot/firmware)
+sudo cp arch/arm64/boot/dts/overlays/*.dtb* /boot/firmware/overlays/
+sudo cp arch/arm64/boot/dts/overlays/README /boot/firmware/overlays/
+
+//UPDATE KERNEL CONFIGRATION FILE
+sudo nano /boot/firmware/config.txt
+kernel=kernel7.img
+
+//ENSURE ITS LOOK SAME
+sudo nano /boot/firmware/cmdline.txt
+console=serial0,115200 console=tty1 root=PARTUUID=487c0156-02 rootfstype=ext4 fsck.repair=yes rootwait quiet splash plymouth.ignore-serial-consoles
+
+
+
+sudo reboot
+
+uname -r
+
+
+

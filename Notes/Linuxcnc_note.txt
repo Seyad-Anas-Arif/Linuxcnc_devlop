@@ -1,0 +1,155 @@
+Source from:https://linuxcnc.org/docs/master/html/code/building-linuxcnc.html
+##Installing linuxcnc from source code:##
+
+#Make sure you are using Realtime kernel
+#clone the source file
+$ git clone https://github.com/LinuxCNC/linuxcnc.git linuxcnc-dev
+
+#satisfy the build dependencies
+$ cd linuxcnc-dev
+$ ./debian/configure
+
+#Most stright forward way to install all build-dependencies
+$ sudo apt-get build-dep .
+
+#which will install all the dependencies required but available. The . is part of the command line,
+# i.e. an instruction to retrieve the dependencies for the source tree at hand, not for dependencies of another package. This completes the installation of build-dependencies.
+#installing dpkg-dev
+$ sudo apt-get install dpkg-dev
+$ dpkg-checkbuilddeps
+
+#This parses the pakages meta-data compares the packages listed as build 
+#dependencies against the list of installed and tell what's missing.
+$ cd linuxcnc-dev/src
+$ ./autogen.sh
+
+#This based on build mode (--with-realtime=uspace -ythis for preempt-RT kernel)
+#($ cd linuxcnc-dev/src
+#$ ./configure --help)  //it will list all configrations
+$ ./configure --with-realtime=uspace
+$ make
+
+#if you are running with real capable system next commend need to exicuted that output of the make it self it will show
+$ sudo make setuid
+
+#Before runnuing linuxcnc set the enviornment :
+$ .(top dir)/scripts/rip-enviornment
+($ linuxcnc-dev $ . ./scripts/rip-enviornment)
+
+#to run the linuxcnc 
+$ linuxcnc
+
+------------------------------Ethercat-Master--------------------------------------------------
+Source frome:https://forum.linuxcnc.org/ethercat/49771-ethercat-build-from-source-full-instructions
+#clone the Source file
+$ git clone https://gitlab.com/etherlab.org/ethercat ethercat-master
+$ cd ethercat-master
+
+#change to stable branch
+$ git checkout stable-1.5
+
+#BUILD THE SOFTWARE AS REGULAR USER, NOT AS ROOT
+#BOOTSTRAP
+$ ./bootstrap
+
+#GET ETHERNET INFOMATION
+$ sudo lspci -v
+
+#CONFIGURE TO THE TYPE OF MODULE NEEDED
+$ ./configure --sysconfdir=/etc/ --disable-8139too --enable-userlib --enable-generic
+#THEN MAKE WITH MODULES
+$ make all modules
+
+#THEN INSTALL THE SOFTWARE AS ROOT ,BECOME ROOT
+$ sudo su
+#INSTALL THE SOFTWARE AS ROOT
+$ make modules_install install
+#DEPENDENCY MODULES COMMAND
+$ depmod
+$ exit
+
+#GET ETHER ADDRESS – WRITE DOWN OR COPY & PASTE THE MAC ADDRESS
+$ ip a
+#OPEN PICO AND ADD YOUR ETH0 ADDRESS
+$ sudo nano /etc/ethercat.conf
+  MASTER0_DEVICE="2c:cf:67:4c:47:83"   (WHATEVER YOUR MAC ADDRESS IS)
+  DEVICE_MODULES="generic"
+
+
+
+
+
+ENABLE THE ETHERCAT SERVICE
+$ sudo systemctl enable ethercat.service
+START THE ETHERCAT SERVICE
+$ sudo systemctl start ethercat.service
+CHECK THE ETHERCAT STATUS
+$ sudo systemctl status ethercat.service
+CHANGE PERMISSIONS
+$ sudo chmod 666 /dev/EtherCAT0
+
+CHECK THAT ITS WORKING WITH. 
+$ ethercat master
+#YOU SHOULD SEE NUMBERS IN THE LINES, IF NOT AND IT’S ALL ZERO’S THEN SOMETHING IS NOT LINKED CORRECTLY IN ETHERCAT OR LINUX.  MAKE SURE IT SHOWS A CHANGE AFTER DOING THE “ethercat master” COMMAND. 
+
+#SETUP PERMISSION
+$ sudo pico /etc/udev/rules.d/99-ethercat.rules
+#ONCE THE FILE IS OPEN, ADD THE FOLLOWING:
+ KERNEL=="EtherCAT[0-9]", MODE="0777"
+
+#RELOAD THE RULES
+$ sudo udevadm control --reload-rules
+
+------------------------------------------Linuxcnc Ethercat------------------------------------------
+#clone the file from github and install //This for linuxcnc ethercat 
+$ git clone https://github.com/sittner/linuxcnc-ethercat
+$ cd linuxcnc-ethercat
+$ make configure
+$ make
+$ sudo make install
+
+------------------------------------------Issues with solution --------------------------------------
+# when if you face issues anything like this-{
+TIS@teckinsoft:~/linuxcnc-dev/configs/sim/axis $ linuxcnc lathe.ini 
+LINUXCNC - 2.10.0~pre0
+Machine configuration directory is '/home/TIS/linuxcnc-dev/configs/sim/axis'
+Machine configuration file is 'lathe.ini'
+Starting LinuxCNC...
+linuxcncsvr (21663) emcsvr: machine 'LinuxCNC-HAL-SIM-LATHE'  version '1.1'
+linuxcnc TPMOD=tpmod HOMEMOD=homemod EMCMOT=motmod
+Note: Using POSIX realtime
+milltask (21679) task: machine 'LinuxCNC-HAL-SIM-LATHE'  version '1.1'
+halui (21681) halui: machine 'LinuxCNC-HAL-SIM-LATHE'  version '1.1'
+Found file(LIB): /home/TIS/linuxcnc-dev/lib/hallib/basic_sim.tcl
+setup_kins: cmd=loadrt trivkins coordinates=xz
+Found file(REL): ./ethercat.hal
+lcec: dlopen: libethercat.so.1: cannot open shared object file: No such file or directory
+./ethercat.hal:2: waitpid failed /home/TIS/linuxcnc-dev/bin/rtapi_app lcec
+./ethercat.hal:2: /home/TIS/linuxcnc-dev/bin/rtapi_app exited without becoming ready
+./ethercat.hal:2: insmod for lcec failed, returned -1
+Shutting down and cleaning up LinuxCNC...
+USRMOT: ERROR: command 30 timeout
+emcMotionInit: emcTrajInit failed
+Note: Using POSIX realtime
+LinuxCNC terminated with an error.  You can find more information in the log:
+    /home/TIS/linuxcnc_debug.txt
+and
+    /home/TIS/linuxcnc_print.txt
+as well as in the output of the shell command 'dmesg' and in the terminal
+}
+
+#parmanently add path to source file and apply the change
+$ echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib' >> ~/.bashrc
+$ source ~/.bashrc
+(source /home/TIS/workspace/linuxcnc-dev/scripts/rip-environment)
+#Alternatively, add the path to /etc/ld.so.conf.d/ and update the linker cache:
+$ echo '/usr/local/lib' | sudo tee /etc/ld.so.conf.d/ethercat.conf
+$ sudo ldconfig
+
+----------------------------CAN Component -CIA402-----------------------------------------------------
+#If you want to use cia402 compatible drives:
+$ cd ~/dev
+$ git clone https://github.com/dbraun1981/hal-cia402
+$ cd hal-cia402
+$ sudo halcompile --install cia402.comp
+

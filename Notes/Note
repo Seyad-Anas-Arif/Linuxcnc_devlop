@@ -1,0 +1,62 @@
+Refernce:
+1. https://linuxcnc.org/docs/stable/html/getting-started/about-linuxcnc.html
+2. https://github.com/LinuxCNC/linuxcnc
+
+To connect rasberry pi- ssh teckinsoft@192.168.201.109
+ssh cnc@teckinsoft.local
+ssh TIS@teckinsoft.local
+htop //task manager for linux system
+
+
+LinuxCNC
+ -Opensource
+ -upto 9 axis
+ -GPL and LGPL
+ -AXIS GUI(there are some other metheds also thers used in GUI) 
+We are mainly focusing on:
+ -an interpreter for G-code (the RS-274 machine tool programming language)
+ -a realtime motion planning system with look-ahead
+
+To use pc as virtual display for rasberry pi (using X11):
+#this is for linuxcnc
+sudo apt-get install xauth xorg	//Target-to install X11 related packages
+sudo apt-get install openssh-client xauth xorg	//Host_ intall X11 related files in debian pc
+ssh -X cnc@192.168.201.102	//host-Connect to the Raspberry Pi with X11 forwarding enabled
+lxterminal &	//Target- display terminal
+
+
+Stepper system:
+BASE_PERIOD is the heartbeat of your LinuxCNC computer.
+
+Installing linuxcnc from source code:
+#Make sure you are using Realtime kernel
+#clone the source file
+$ git clone https://github.com/LinuxCNC/linuxcnc.git linuxcnc-dev
+#satisfy the build dependencies
+$ cd linuxcnc-dev
+$ ./debian/configure
+#Most stright forward way to install all build-dependencies
+$ sudo apt-get build-dep .
+#which will install all the dependencies required but available. The . is part of the command line,
+# i.e. an instruction to retrieve the dependencies for the source tree at hand, not for dependencies of another package. This completes the installation of build-dependencies.
+#installing dpkg-dev
+$ sudo apt-get install dpkg-dev
+$ dpkg-checkbuilddeps
+#This parses the pakages meta-data compares the packages listed as build 
+#dependencies against the list of installed and tell what's missing.
+$ cd linuxcnc-dev/src
+$ ./autogen.sh
+#This based on build mode (--with-realtime=uspace -ythis for preempt-RT kernel)
+#($ cd linuxcnc-dev/src
+#$ ./configure --help)  //it will list all configrations
+$ ./configure --with-realtime=uspace
+$ make
+#if you are running with real capable system next commend need to exicuted that output of the make it self it will show
+$ sudo make setuid
+
+#Before runnuing linuxcnc set the enviornment :
+$ .(top dir)/scripts/rip-enviornment
+linuxcnc-dev $ . ./scripts/rip-enviornment
+
+#to run the linuxcnc 
+$ linuxcnc

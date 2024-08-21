@@ -1,0 +1,20 @@
+!Starting with linuxcnc!
+//To se connected slave and it opratopn statuts
+$ ethercat slave
+//if it was in preopration state change this into-Safeopration state,in 0 its position
+$ ethercat states -p 0 SAFEOP
+//Query the Object dictionary-it contain all parameters of slave
+$ ethercat sdos -p 0
+//Read perticular object data  
+$ ethercat upload -p 0 (SDO INDEX-0x2011) (sub index-0x00)
+//if want to change somw time 
+$ ethercat download -p 0 0x2011 0x00 (enter value-0x0A00)
+//check path
+$ echo $LD_LIBRARY_PATH
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+//if you got any error with respect to CIA04
+//link the cia component with their own enviornment
+linuxcnc-dev $. ./scripts/rip-enviornment
+//then change the directory to cia source file
+$ cd hal-cia402
+$ sudo halcompile --install cia402.comp

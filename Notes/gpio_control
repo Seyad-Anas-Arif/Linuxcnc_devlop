@@ -1,0 +1,21 @@
+--------ON/OFF LED---------
+from gpiozero import LED
+led = LED(17)
+led.on()
+led.off()
+--------------LED Blink---------------
+from gpiozero import LED
+from time import sleep
+
+led = LED(17)
+
+while True:
+    led.on()
+    sleep(1)
+    led.off()
+    sleep(1)
+-----------Pushbuttion---------------
+from gpiozero import Button
+button = Button(2)
+button.wait_for_press()
+print('You pushed me')

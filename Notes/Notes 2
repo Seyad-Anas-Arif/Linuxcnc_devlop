@@ -1,0 +1,14 @@
+//ten, where multiple kernel versions are in play, I have used 
+sudo apt install linux-image-$(uname -r)-rt-arm64 linux-headers-$(uname -r)-rt-arm64
+//it sure if Debian knows about your kernel.
+
+//To search for linuxcnc header
+apt-cache search linux-headers
+
+//Ethercat Simple step-from linuxcnc image
+https://forum.linuxcnc.org/ethercat/45336-ethercat-installation-from-repositories-how-to-step-by-step
+
+//Ethercat from source 
+https://forum.linuxcnc.org/ethercat/49771-ethercat-build-from-source-full-instructions
+https://forum.linuxcnc.org/ethercat/42048-notes-from-installation-of-ethercat-on-raspberry-pi-4
+

@@ -1,0 +1,136 @@
+Error report created by /usr/lib/tcltk/linuxcnc/show_errors.tcl:
+
+Print file information:
+RUN_IN_PLACE=no
+LINUXCNC_DIR=
+LINUXCNC_BIN_DIR=/usr/bin
+LINUXCNC_TCL_DIR=/usr/lib/tcltk/linuxcnc
+LINUXCNC_SCRIPT_DIR=
+LINUXCNC_RTLIB_DIR=/usr/lib/linuxcnc/modules
+LINUXCNC_CONFIG_DIR=
+LINUXCNC_LANG_DIR=/usr/lib/tcltk/linuxcnc/msgs
+INIVAR=inivar
+HALCMD=halcmd
+LINUXCNC_EMCSH=/usr/bin/wish8.6
+LINUXCNC - 2.9.0~pre1+git20230208.f1270d6ed7
+Machine configuration directory is '/home/TIS/linuxcnc/configs/sim.axis'
+Machine configuration file is 'lathe.ini'
+INIFILE=/home/TIS/linuxcnc/configs/sim.axis/lathe.ini
+VERSION=1.1
+PARAMETER_FILE=sim-lathe.var
+TPMOD=
+HOMEMOD=
+TASK=milltask
+HALUI=halui
+DISPLAY=axis
+COORDINATES=X Z
+KINEMATICS=trivkins coordinates=xz
+Starting LinuxCNC...
+Starting LinuxCNC server program: linuxcncsvr
+Loading Real Time OS, RTAPI, and HAL_LIB modules
+Starting LinuxCNC IO program: io
+Starting HAL User Interface program: halui
+linuxcnc TPMOD=tpmod HOMEMOD=homemod EMCMOT=motmod
+Found file(LIB): /usr/share/linuxcnc/hallib/basic_sim.tcl
+Found file(REL): ./ethercat.hal
+Shutting down and cleaning up LinuxCNC...
+Removing HAL_LIB, RTAPI, and Real Time OS modules
+Removing NML shared memory segments
+
+Debug file information:
+Note: Using POSIX realtime
+setup_kins: cmd=loadrt trivkins coordinates=xz
+lcec: dlopen: /usr/lib/linuxcnc/modules/lcec.so: undefined symbol: ecrt_slave_config_sdo
+./ethercat.hal:2: waitpid failed /usr/bin/rtapi_app lcec
+./ethercat.hal:2: /usr/bin/rtapi_app exited without becoming ready
+./ethercat.hal:2: insmod for lcec failed, returned -1
+2920
+Stopping realtime threads
+Unloading hal components
+Note: Using POSIX realtime
+
+
+
+-----------------------------------------------------------------------
+Info report created by linuxcnc_info:
+The file:    /tmp/linuxcnc_info.txt
+can be posted to a forum or a web site like:
+     http://pastebin.com
+in order to provide information about the linuxcnc
+system and configuration.
+
+                Date: Mon 15 Jul 10:06:00 IST 2024
+            UTC Date: Mon 15 Jul 04:36:00 UTC 2024
+        this program: /usr/bin/linuxcnc_info
+              uptime: 10:06:00 up 3 min, 3 users, load average: 1.72, 0.94, 0.38
+     lsb_release -sa: Debian Debian GNU/Linux 12 (bookworm) 12 bookworm
+            linuxcnc: /usr/bin/linuxcnc
+                 pwd: /home/TIS/linuxcnc/configs/sim.axis
+                USER: TIS
+             LOGNAME: TIS
+                HOME: /home/TIS
+              EDITOR: 
+              VISUAL: 
+            LANGUAGE: 
+                TERM: dumb
+           COLORTERM: 
+             DISPLAY: :0
+             DESKTOP: LXDE-pi-wayfire
+/usr/bin/linuxcnc_info: line 133: xdpyinfo: command not found
+        display size: 
+                PATH: /usr/bin:/home/TIS/linuxcnc/configs/sim.axis/bin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games
+
+uname items:
+         nodename -n: teckinsoft
+      kernel-name -s: Linux
+      kernel-vers -v: #1 SMP PREEMPT_RT Wed Jul 10 10:56:28 IST 2024
+          machine -m: aarch64
+        processor -p: unknown
+         platform -i: unknown
+      oper system -o: GNU/Linux
+
+/proc items:
+             cmdline: reboot=w coherent_pool=1M 8250.nr_uarts=1 pci=pcie_bus_safe smsc95xx.macaddr=2C:CF:67:4C:47:83 vc_mem.mem_base=0x3fc00000 vc_mem.mem_size=0x40000000 console=ttyAMA10,115200 console=tty1 root=PARTUUID=2bfb5b26-02 rootfstype=ext4 fsck.repair=yes rootwait quiet splash plymouth.ignore-serial-consoles cfg80211.ieee80211_regdom=IN
+          model name: 
+               cores: 
+             cpu MHz: 
+             parport: 
+              serial: 
+
+Versions:
+                 gcc: gcc (Debian 12.2.0-14) 12.2.0
+              python: Python 3.11.2
+                 git: git version 2.39.2
+          git commit: NA
+                 tcl: 8.6
+                  tk: 8.6
+               glade: not_in_PATH
+
+linuxcnc_var all:
+
+     LINUXCNCVERSION: 2.9.0~pre1+git20230208.f1270d6ed7
+LINUXCNC_AUX_GLADEVCP: /usr/share/linuxcnc/aux_gladevcp
+LINUXCNC_AUX_EXAMPLES: /usr/share/linuxcnc/aux_examples
+            REALTIME: /usr/lib/linuxcnc/realtime
+                 RTS: uspace
+          HALLIB_DIR: /usr/share/linuxcnc/hallib
+              PYTHON: /usr/bin/python3
+
+dpkg -l '*linuxcnc*':
+Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                Version                             Architecture Description
++++-===================-===================================-============-=====================================================================
+un  linuxcnc            <none>                              <none>       (no description available)
+un  linuxcnc-dev        <none>                              <none>       (no description available)
+un  linuxcnc-doc        <none>                              <none>       (no description available)
+ii  linuxcnc-doc-en     2.9.0~pre1+git20230208.f1270d6ed7-1 all          motion controller for CNC machines and robots (English documentation)
+un  linuxcnc-doc-es     <none>                              <none>       (no description available)
+un  linuxcnc-doc-fr     <none>                              <none>       (no description available)
+un  linuxcnc-sim        <none>                              <none>       (no description available)
+un  linuxcnc-sim-dev    <none>                              <none>       (no description available)
+ii  linuxcnc-uspace     2.9.0~pre1+git20230208.f1270d6ed7-1 arm64        motion controller for CNC machines and robots
+ii  linuxcnc-uspace-dev 2.9.0~pre1+git20230208.f1270d6ed7-1 arm64        PC based motion controller for real-time Linux
+
+
