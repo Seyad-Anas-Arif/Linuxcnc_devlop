@@ -1,0 +1,8 @@
+debugging linuxcnc source file from : https://github.com/LinuxCNC/linuxcnc
+# understanding of  this source file requred some patient
+Linuxcnc:
+     main custamization file are in 
+    linuxcnc/src/emc/usr_intf
+     #in  this file  contain most of the ui part
+     #Note: filename.glade this type files for gui that work on GTK+(GIMP Toolkit)
+     
