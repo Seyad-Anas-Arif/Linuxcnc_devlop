@@ -6,3 +6,374 @@ Linuxcnc:
      #in  this file  contain most of the ui part
      #Note: filename.glade this type files for gui that work on GTK+(GIMP Toolkit)
      
+Finding how ethercat Linked linuxcnc : 
+ File Location: linux/drivers/gpu/drm/mgag200/mgag200_mode.c
+                linux/drivers/gpu/drm/mgag200/mgag200_mode.h
+
+ 
+     int mgag200_device_init(struct mga_device *mdev,
+                    const struct mgag200_device_info *info,
+                    const struct mgag200_device_funcs *funcs)
+     {
+          struct drm_device *dev = &mdev->base;
+          u8 crtcext3, misc;
+          int ret;
+
+          mdev->info = info;
+          mdev->funcs = funcs;
+
+          ret = drmm_mutex_init(dev, &mdev->rmmio_lock);
+          if (ret)
+               return ret;
+
+          mutex_lock(&mdev->rmmio_lock);
+
+          RREG_ECRT(0x03, crtcext3);
+          crtcext3 |= MGAREG_CRTCEXT3_MGAMODE;
+          WREG_ECRT(0x03, crtcext3);
+
+          WREG_ECRT(0x04, 0x00);
+
+          misc = RREG8(MGA_MISC_IN);
+          misc |= MGAREG_MISC_RAMMAPEN |
+               MGAREG_MISC_HIGH_PG_SEL;
+          WREG8(MGA_MISC_OUT, misc);
+
+          mutex_unlock(&mdev->rmmio_lock);
+
+          return 0;
+     }
+               
+
+     #define RREG_ECRT(reg, v)					\
+	do {							\
+		WREG8(MGAREG_CRTCEXT_INDEX, reg);		\
+		v = RREG8(MGAREG_CRTCEXT_DATA);			\
+	} while (0)						\
+
+     #define WREG_ECRT(reg, v)					\
+          do {							\
+               WREG8(MGAREG_CRTCEXT_INDEX, reg);				\
+               WREG8(MGAREG_CRTCEXT_DATA, v);				\
+          } while (0)						\
+
+     static void mgag200_g200er_init_registers(struct mga_device *mdev)
+     {
+          static const u8 dacvalue[] = {
+               MGAG200_DAC_DEFAULT(0x00, 0xc9, 0x1f, 0x00, 0x00, 0x00)
+          };
+
+          size_t i;
+
+          for (i = 0; i < ARRAY_SIZE(dacvalue); i++) {
+               if ((i <= 0x17) ||
+               (i == 0x1b) ||
+               (i == 0x1c) ||
+               ((i >= 0x1f) && (i <= 0x29)) ||
+               ((i >= 0x30) && (i <= 0x37)))
+                    continue;
+               WREG_DAC(i, dacvalue[i]);
+          }
+
+          WREG_DAC(0x90, 0); /* G200ER specific */
+
+          mgag200_init_registers(mdev);
+
+          WREG_ECRT(0x24, 0x5); /* G200ER specific */
+     }
+
+
+          static void mgag200_g200ev_set_hiprilvl(struct mga_device *mdev)
+     {
+          WREG_ECRT(0x06, 0x00);
+     }
+
+     static void mgag200_g200ew3_init_registers(struct mga_device *mdev)
+     {
+          mgag200_g200wb_init_registers(mdev); // same as G200WB
+
+          WREG_ECRT(0x34, 0x5); // G200EW3 specific
+     }
+
+
+     static void mgag200_g200se_set_hiprilvl(struct mga_device *mdev,
+                              const struct drm_display_mode *mode,
+                              const struct drm_format_info *format)
+     {
+          struct mgag200_g200se_device *g200se = to_mgag200_g200se_device(&mdev->base);
+          unsigned int hiprilvl;
+          u8 crtcext6;
+
+          if  (g200se->unique_rev_id >= 0x04) {
+               hiprilvl = 0;
+          } else if (g200se->unique_rev_id >= 0x02) {
+               unsigned int bpp;
+               unsigned long mb;
+
+               if (format->cpp[0] * 8 > 16)
+                    bpp = 32;
+               else if (format->cpp[0] * 8 > 8)
+                    bpp = 16;
+               else
+                    bpp = 8;
+
+               mb = (mode->clock * bpp) / 1000;
+               if (mb > 3100)
+                    hiprilvl = 0;
+               else if (mb > 2600)
+                    hiprilvl = 1;
+               else if (mb > 1900)
+                    hiprilvl = 2;
+               else if (mb > 1160)
+                    hiprilvl = 3;
+               else if (mb > 440)
+                    hiprilvl = 4;
+               else
+                    hiprilvl = 5;
+
+          } else if (g200se->unique_rev_id >= 0x01) {
+               hiprilvl = 3;
+          } else {
+               hiprilvl = 4;
+          }
+
+          crtcext6 = hiprilvl; /* implicitly sets maxhipri to 0 */
+
+          WREG_ECRT(0x06, crtcext6);
+     }
+
+     static void mgag200_set_startadd(struct mga_device *mdev,
+                         unsigned long offset)
+     {
+          struct drm_device *dev = &mdev->base;
+          u32 startadd;
+          u8 crtcc, crtcd, crtcext0;
+
+          startadd = offset / 8;
+
+          if (startadd > 0)
+               drm_WARN_ON_ONCE(dev, mdev->info->bug_no_startadd);
+
+          /*
+          * Can't store addresses any higher than that, but we also
+          * don't have more than 16 MiB of memory, so it should be fine.
+          */
+          drm_WARN_ON(dev, startadd > 0x1fffff);
+
+          RREG_ECRT(0x00, crtcext0);
+
+          crtcc = (startadd >> 8) & 0xff;
+          crtcd = startadd & 0xff;
+          crtcext0 &= 0xb0;
+          crtcext0 |= ((startadd >> 14) & BIT(6)) |
+               ((startadd >> 16) & 0x0f);
+
+          WREG_CRT(0x0c, crtcc);
+          WREG_CRT(0x0d, crtcd);
+          WREG_ECRT(0x00, crtcext0);
+     }
+
+     void mgag200_set_mode_regs(struct mga_device *mdev, const struct drm_display_mode *mode)
+     {
+          const struct mgag200_device_info *info = mdev->info;
+          unsigned int hdisplay, hsyncstart, hsyncend, htotal;
+          unsigned int vdisplay, vsyncstart, vsyncend, vtotal;
+          u8 misc, crtcext1, crtcext2, crtcext5;
+
+          hdisplay = mode->hdisplay / 8 - 1;
+          hsyncstart = mode->hsync_start / 8 - 1;
+          hsyncend = mode->hsync_end / 8 - 1;
+          htotal = mode->htotal / 8 - 1;
+
+          /* Work around hardware quirk */
+          if ((htotal & 0x07) == 0x06 || (htotal & 0x07) == 0x04)
+               htotal++;
+
+          vdisplay = mode->vdisplay - 1;
+          vsyncstart = mode->vsync_start - 1;
+          vsyncend = mode->vsync_end - 1;
+          vtotal = mode->vtotal - 2;
+
+          misc = RREG8(MGA_MISC_IN);
+
+          if (mode->flags & DRM_MODE_FLAG_NHSYNC)
+               misc |= MGAREG_MISC_HSYNCPOL;
+          else
+               misc &= ~MGAREG_MISC_HSYNCPOL;
+
+          if (mode->flags & DRM_MODE_FLAG_NVSYNC)
+               misc |= MGAREG_MISC_VSYNCPOL;
+          else
+               misc &= ~MGAREG_MISC_VSYNCPOL;
+
+          crtcext1 = (((htotal - 4) & 0x100) >> 8) |
+               ((hdisplay & 0x100) >> 7) |
+               ((hsyncstart & 0x100) >> 6) |
+               (htotal & 0x40);
+          if (info->has_vidrst)
+               crtcext1 |= MGAREG_CRTCEXT1_VRSTEN |
+                    MGAREG_CRTCEXT1_HRSTEN;
+
+          crtcext2 = ((vtotal & 0xc00) >> 10) |
+               ((vdisplay & 0x400) >> 8) |
+               ((vdisplay & 0xc00) >> 7) |
+               ((vsyncstart & 0xc00) >> 5) |
+               ((vdisplay & 0x400) >> 3);
+          crtcext5 = 0x00;
+
+          WREG_CRT(0, htotal - 4);
+          WREG_CRT(1, hdisplay);
+          WREG_CRT(2, hdisplay);
+          WREG_CRT(3, (htotal & 0x1F) | 0x80);
+          WREG_CRT(4, hsyncstart);
+          WREG_CRT(5, ((htotal & 0x20) << 2) | (hsyncend & 0x1F));
+          WREG_CRT(6, vtotal & 0xFF);
+          WREG_CRT(7, ((vtotal & 0x100) >> 8) |
+               ((vdisplay & 0x100) >> 7) |
+               ((vsyncstart & 0x100) >> 6) |
+               ((vdisplay & 0x100) >> 5) |
+               ((vdisplay & 0x100) >> 4) | /* linecomp */
+               ((vtotal & 0x200) >> 4) |
+               ((vdisplay & 0x200) >> 3) |
+               ((vsyncstart & 0x200) >> 2));
+          WREG_CRT(9, ((vdisplay & 0x200) >> 4) |
+               ((vdisplay & 0x200) >> 3));
+          WREG_CRT(16, vsyncstart & 0xFF);
+          WREG_CRT(17, (vsyncend & 0x0F) | 0x20);
+          WREG_CRT(18, vdisplay & 0xFF);
+          WREG_CRT(20, 0);
+          WREG_CRT(21, vdisplay & 0xFF);
+          WREG_CRT(22, (vtotal + 1) & 0xFF);
+          WREG_CRT(23, 0xc3);
+          WREG_CRT(24, vdisplay & 0xFF);
+
+          WREG_ECRT(0x01, crtcext1);
+          WREG_ECRT(0x02, crtcext2);
+          WREG_ECRT(0x05, crtcext5);
+
+          WREG8(MGA_MISC_OUT, misc);
+     }
+
+static void mgag200_set_offset(struct mga_device *mdev,
+			       const struct drm_framebuffer *fb)
+{
+	u8 crtc13, crtcext0;
+	u32 offset = mgag200_calculate_offset(mdev, fb);
+
+	RREG_ECRT(0, crtcext0);
+
+	crtc13 = offset & 0xff;
+
+	crtcext0 &= ~MGAREG_CRTCEXT0_OFFSET_MASK;
+	crtcext0 |= (offset >> 4) & MGAREG_CRTCEXT0_OFFSET_MASK;
+
+	WREG_CRT(0x13, crtc13);
+	WREG_ECRT(0x00, crtcext0);
+}
+
+void mgag200_set_format_regs(struct mga_device *mdev, const struct drm_format_info *format)
+{
+	struct drm_device *dev = &mdev->base;
+	unsigned int bpp, bppshift, scale;
+	u8 crtcext3, xmulctrl;
+
+	bpp = format->cpp[0] * 8;
+
+	bppshift = mgag200_get_bpp_shift(format);
+	switch (bpp) {
+	case 24:
+		scale = ((1 << bppshift) * 3) - 1;
+		break;
+	default:
+		scale = (1 << bppshift) - 1;
+		break;
+	}
+
+	RREG_ECRT(3, crtcext3);
+
+	switch (bpp) {
+	case 8:
+		xmulctrl = MGA1064_MUL_CTL_8bits;
+		break;
+	case 16:
+		if (format->depth == 15)
+			xmulctrl = MGA1064_MUL_CTL_15bits;
+		else
+			xmulctrl = MGA1064_MUL_CTL_16bits;
+		break;
+	case 24:
+		xmulctrl = MGA1064_MUL_CTL_24bits;
+		break;
+	case 32:
+		xmulctrl = MGA1064_MUL_CTL_32_24bits;
+		break;
+	default:
+		/* BUG: We should have caught this problem already. */
+		drm_WARN_ON(dev, "invalid format depth\n");
+		return;
+	}
+
+	crtcext3 &= ~GENMASK(2, 0);
+	crtcext3 |= scale;
+
+	WREG_DAC(MGA1064_MUL_CTL, xmulctrl);
+
+	WREG_GFX(0, 0x00);
+	WREG_GFX(1, 0x00);
+	WREG_GFX(2, 0x00);
+	WREG_GFX(3, 0x00);
+	WREG_GFX(4, 0x00);
+	WREG_GFX(5, 0x40);
+	/* GCTL6 should be 0x05, but we configure memmapsl to 0xb8000 (text mode),
+	 * so that it doesn't hang when running kexec/kdump on G200_SE rev42.
+	 */
+	WREG_GFX(6, 0x0d);
+	WREG_GFX(7, 0x0f);
+	WREG_GFX(8, 0x0f);
+
+	WREG_ECRT(3, crtcext3);
+}
+
+void mgag200_enable_display(struct mga_device *mdev)
+{
+	u8 seq0, crtcext1;
+
+	RREG_SEQ(0x00, seq0);
+	seq0 |= MGAREG_SEQ0_SYNCRST |
+		MGAREG_SEQ0_ASYNCRST;
+	WREG_SEQ(0x00, seq0);
+
+	/*
+	 * TODO: replace busy waiting with vblank IRQ; put
+	 *       msleep(50) before changing SCROFF
+	 */
+	mga_wait_vsync(mdev);
+	mga_wait_busy(mdev);
+
+	RREG_ECRT(0x01, crtcext1);
+	crtcext1 &= ~MGAREG_CRTCEXT1_VSYNCOFF;
+	crtcext1 &= ~MGAREG_CRTCEXT1_HSYNCOFF;
+	WREG_ECRT(0x01, crtcext1);
+}
+
+static void mgag200_disable_display(struct mga_device *mdev)
+{
+	u8 seq0, crtcext1;
+
+	RREG_SEQ(0x00, seq0);
+	seq0 &= ~MGAREG_SEQ0_SYNCRST;
+	WREG_SEQ(0x00, seq0);
+
+	/*
+	 * TODO: replace busy waiting with vblank IRQ; put
+	 *       msleep(50) before changing SCROFF
+	 */
+	mga_wait_vsync(mdev);
+	mga_wait_busy(mdev);
+
+	RREG_ECRT(0x01, crtcext1);
+	crtcext1 |= MGAREG_CRTCEXT1_VSYNCOFF |
+		    MGAREG_CRTCEXT1_HSYNCOFF;
+	WREG_ECRT(0x01, crtcext1);
+}
+     
