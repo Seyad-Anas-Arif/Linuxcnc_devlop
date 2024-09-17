@@ -1,5 +1,17 @@
 debugging linuxcnc source file from : https://github.com/LinuxCNC/linuxcnc
 # understanding of  this source file requred some patient
+Steps to Build qt Application
+     1. Linking ethercat - Application
+     2. G-code Interpreter
+     3. Motion controller
+     4. Hal layer
+     5. QT GUI
+what are the questions i have now is.
+1. which file are folder is for G-code Interpretation?
+2. which file or folder is for Motion planer and motion controller ?
+3. How to link ethercat to QT.?
+
+
 Linuxcnc:
      main custamization file are in 
     linuxcnc/src/emc/usr_intf
@@ -378,4 +390,8 @@ static void mgag200_disable_display(struct mga_device *mdev)
 		    MGAREG_CRTCEXT1_HSYNCOFF;
 	WREG_ECRT(0x01, crtcext1);
 }
-# i am just adding this do  git
+---------------------------------------------------------Motion planer -------------------------------------------------------------------------------
+#This sctructure hold most neccessery data of Hal - emcmot_hal_data
+#file Location :linuxcnc/src/emc/motion/mot_priv.h
+main work at :linuxcnc/src/Axis/Axis.py
+in this G-code parsing  line-1580
