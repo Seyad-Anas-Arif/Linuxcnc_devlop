@@ -10,6 +10,8 @@ Finding how ethercat Linked linuxcnc :
  File Location: linux/drivers/gpu/drm/mgag200/mgag200_mode.c
                 linux/drivers/gpu/drm/mgag200/mgag200_mode.h
 
+#this read and write registers are all related to etherccat 
+
  
      int mgag200_device_init(struct mga_device *mdev,
                     const struct mgag200_device_info *info,
