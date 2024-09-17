@@ -378,4 +378,4 @@ static void mgag200_disable_display(struct mga_device *mdev)
 		    MGAREG_CRTCEXT1_HSYNCOFF;
 	WREG_ECRT(0x01, crtcext1);
 }
-# i am just adding this do check git
+# i am just adding this do  git
