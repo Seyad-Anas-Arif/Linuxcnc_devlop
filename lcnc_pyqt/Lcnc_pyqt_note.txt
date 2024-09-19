@@ -405,6 +405,6 @@ line 154
 
  
 build perticular thing $ cd linuxcnc-source-dir/src
-$ make ../bin/froboz
+$ make 
 
 
