@@ -395,3 +395,16 @@ static void mgag200_disable_display(struct mga_device *mdev)
 #file Location :linuxcnc/src/emc/motion/mot_priv.h
 main work at :linuxcnc/src/Axis/Axis.py
 in this G-code parsing  line-1580
+
+---------------------------------------------------------- Motion Engine -----------------------------------------------------------------------------
+What is motion engine ..?
+what it consist..?
+what are the thing i  need to create a motion engine ..?
+
+line 154
+
+ 
+build perticular thing $ cd linuxcnc-source-dir/src
+$ make ../bin/froboz
+
+
