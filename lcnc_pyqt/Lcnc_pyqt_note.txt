@@ -6,658 +6,668 @@ Steps to Build qt Application
      3. Motion controller
      4. Hal layer
      5. QT GUI
-what are the questions i have now is.
-1. which file are folder is for G-code Interpretation?
-2. which file or folder is for Motion planer and motion controller ?
-3. How to link ethercat to QT.?
+--------------------------------------------------------Doubt section---------------------------------------------------------
+ what are the questions i have now is.
+     1. which file are folder is for G-code Interpretation?
+     2. which file or folder is for Motion planer and motion controller ?
+     3. How to link ethercat to QT.?
+
+---------------------------------------------------------1. Ethercat -------------------------------------------------------------
+ Reference For ethercat master: https://gitlab.com/etherlab.org/ethercat
+ Linuxcnc ethercat : https://github.com/linuxcnc-ethercat/linuxcnc-ethercat
 
 
-Linuxcnc:
-     main custamization file are in 
-    linuxcnc/src/emc/usr_intf
-     #in  this file  contain most of the ui part
-     #Note: filename.glade this type files for gui that work on GTK+(GIMP Toolkit)
+     Linuxcnc:
+          main custamization file are in 
+     linuxcnc/src/emc/usr_intf
+          #in  this file  contain most of the ui part
+          #Note: filename.glade this type files for gui that work on GTK+(GIMP Toolkit)
+          
+     Finding how ethercat Linked linuxcnc : 
+     File Location: linux/drivers/gpu/drm/mgag200/mgag200_mode.c
+                    linux/drivers/gpu/drm/mgag200/mgag200_mode.h
+
+     #this read and write registers are all related to etherccat 
+
      
-Finding how ethercat Linked linuxcnc : 
- File Location: linux/drivers/gpu/drm/mgag200/mgag200_mode.c
-                linux/drivers/gpu/drm/mgag200/mgag200_mode.h
+          int mgag200_device_init(struct mga_device *mdev,
+                         const struct mgag200_device_info *info,
+                         const struct mgag200_device_funcs *funcs)
+          {
+               struct drm_device *dev = &mdev->base;
+               u8 crtcext3, misc;
+               int ret;
 
-#this read and write registers are all related to etherccat 
+               mdev->info = info;
+               mdev->funcs = funcs;
 
- 
-     int mgag200_device_init(struct mga_device *mdev,
-                    const struct mgag200_device_info *info,
-                    const struct mgag200_device_funcs *funcs)
-     {
-          struct drm_device *dev = &mdev->base;
-          u8 crtcext3, misc;
-          int ret;
+               ret = drmm_mutex_init(dev, &mdev->rmmio_lock);
+               if (ret)
+                    return ret;
 
-          mdev->info = info;
-          mdev->funcs = funcs;
+               mutex_lock(&mdev->rmmio_lock);
 
-          ret = drmm_mutex_init(dev, &mdev->rmmio_lock);
-          if (ret)
-               return ret;
+               RREG_ECRT(0x03, crtcext3);
+               crtcext3 |= MGAREG_CRTCEXT3_MGAMODE;
+               WREG_ECRT(0x03, crtcext3);
 
-          mutex_lock(&mdev->rmmio_lock);
+               WREG_ECRT(0x04, 0x00);
 
-          RREG_ECRT(0x03, crtcext3);
-          crtcext3 |= MGAREG_CRTCEXT3_MGAMODE;
-          WREG_ECRT(0x03, crtcext3);
+               misc = RREG8(MGA_MISC_IN);
+               misc |= MGAREG_MISC_RAMMAPEN |
+                    MGAREG_MISC_HIGH_PG_SEL;
+               WREG8(MGA_MISC_OUT, misc);
 
-          WREG_ECRT(0x04, 0x00);
+               mutex_unlock(&mdev->rmmio_lock);
 
-          misc = RREG8(MGA_MISC_IN);
-          misc |= MGAREG_MISC_RAMMAPEN |
-               MGAREG_MISC_HIGH_PG_SEL;
-          WREG8(MGA_MISC_OUT, misc);
+               return 0;
+          }
+                    
 
-          mutex_unlock(&mdev->rmmio_lock);
-
-          return 0;
-     }
-               
-
-     #define RREG_ECRT(reg, v)					\
-	do {							\
-		WREG8(MGAREG_CRTCEXT_INDEX, reg);		\
-		v = RREG8(MGAREG_CRTCEXT_DATA);			\
-	} while (0)						\
-
-     #define WREG_ECRT(reg, v)					\
+          #define RREG_ECRT(reg, v)					\
           do {							\
-               WREG8(MGAREG_CRTCEXT_INDEX, reg);				\
-               WREG8(MGAREG_CRTCEXT_DATA, v);				\
+               WREG8(MGAREG_CRTCEXT_INDEX, reg);		\
+               v = RREG8(MGAREG_CRTCEXT_DATA);			\
           } while (0)						\
 
-     static void mgag200_g200er_init_registers(struct mga_device *mdev)
-     {
-          static const u8 dacvalue[] = {
-               MGAG200_DAC_DEFAULT(0x00, 0xc9, 0x1f, 0x00, 0x00, 0x00)
-          };
+          #define WREG_ECRT(reg, v)					\
+               do {							\
+                    WREG8(MGAREG_CRTCEXT_INDEX, reg);				\
+                    WREG8(MGAREG_CRTCEXT_DATA, v);				\
+               } while (0)						\
 
-          size_t i;
+          static void mgag200_g200er_init_registers(struct mga_device *mdev)
+          {
+               static const u8 dacvalue[] = {
+                    MGAG200_DAC_DEFAULT(0x00, 0xc9, 0x1f, 0x00, 0x00, 0x00)
+               };
 
-          for (i = 0; i < ARRAY_SIZE(dacvalue); i++) {
-               if ((i <= 0x17) ||
-               (i == 0x1b) ||
-               (i == 0x1c) ||
-               ((i >= 0x1f) && (i <= 0x29)) ||
-               ((i >= 0x30) && (i <= 0x37)))
-                    continue;
-               WREG_DAC(i, dacvalue[i]);
+               size_t i;
+
+               for (i = 0; i < ARRAY_SIZE(dacvalue); i++) {
+                    if ((i <= 0x17) ||
+                    (i == 0x1b) ||
+                    (i == 0x1c) ||
+                    ((i >= 0x1f) && (i <= 0x29)) ||
+                    ((i >= 0x30) && (i <= 0x37)))
+                         continue;
+                    WREG_DAC(i, dacvalue[i]);
+               }
+
+               WREG_DAC(0x90, 0); /* G200ER specific */
+
+               mgag200_init_registers(mdev);
+
+               WREG_ECRT(0x24, 0x5); /* G200ER specific */
           }
 
-          WREG_DAC(0x90, 0); /* G200ER specific */
 
-          mgag200_init_registers(mdev);
+               static void mgag200_g200ev_set_hiprilvl(struct mga_device *mdev)
+          {
+               WREG_ECRT(0x06, 0x00);
+          }
 
-          WREG_ECRT(0x24, 0x5); /* G200ER specific */
-     }
+          static void mgag200_g200ew3_init_registers(struct mga_device *mdev)
+          {
+               mgag200_g200wb_init_registers(mdev); // same as G200WB
 
-
-          static void mgag200_g200ev_set_hiprilvl(struct mga_device *mdev)
-     {
-          WREG_ECRT(0x06, 0x00);
-     }
-
-     static void mgag200_g200ew3_init_registers(struct mga_device *mdev)
-     {
-          mgag200_g200wb_init_registers(mdev); // same as G200WB
-
-          WREG_ECRT(0x34, 0x5); // G200EW3 specific
-     }
+               WREG_ECRT(0x34, 0x5); // G200EW3 specific
+          }
 
 
-     static void mgag200_g200se_set_hiprilvl(struct mga_device *mdev,
-                              const struct drm_display_mode *mode,
-                              const struct drm_format_info *format)
-     {
-          struct mgag200_g200se_device *g200se = to_mgag200_g200se_device(&mdev->base);
-          unsigned int hiprilvl;
-          u8 crtcext6;
+          static void mgag200_g200se_set_hiprilvl(struct mga_device *mdev,
+                                   const struct drm_display_mode *mode,
+                                   const struct drm_format_info *format)
+          {
+               struct mgag200_g200se_device *g200se = to_mgag200_g200se_device(&mdev->base);
+               unsigned int hiprilvl;
+               u8 crtcext6;
 
-          if  (g200se->unique_rev_id >= 0x04) {
-               hiprilvl = 0;
-          } else if (g200se->unique_rev_id >= 0x02) {
-               unsigned int bpp;
-               unsigned long mb;
-
-               if (format->cpp[0] * 8 > 16)
-                    bpp = 32;
-               else if (format->cpp[0] * 8 > 8)
-                    bpp = 16;
-               else
-                    bpp = 8;
-
-               mb = (mode->clock * bpp) / 1000;
-               if (mb > 3100)
+               if  (g200se->unique_rev_id >= 0x04) {
                     hiprilvl = 0;
-               else if (mb > 2600)
-                    hiprilvl = 1;
-               else if (mb > 1900)
-                    hiprilvl = 2;
-               else if (mb > 1160)
-                    hiprilvl = 3;
-               else if (mb > 440)
-                    hiprilvl = 4;
-               else
-                    hiprilvl = 5;
+               } else if (g200se->unique_rev_id >= 0x02) {
+                    unsigned int bpp;
+                    unsigned long mb;
 
-          } else if (g200se->unique_rev_id >= 0x01) {
-               hiprilvl = 3;
-          } else {
-               hiprilvl = 4;
+                    if (format->cpp[0] * 8 > 16)
+                         bpp = 32;
+                    else if (format->cpp[0] * 8 > 8)
+                         bpp = 16;
+                    else
+                         bpp = 8;
+
+                    mb = (mode->clock * bpp) / 1000;
+                    if (mb > 3100)
+                         hiprilvl = 0;
+                    else if (mb > 2600)
+                         hiprilvl = 1;
+                    else if (mb > 1900)
+                         hiprilvl = 2;
+                    else if (mb > 1160)
+                         hiprilvl = 3;
+                    else if (mb > 440)
+                         hiprilvl = 4;
+                    else
+                         hiprilvl = 5;
+
+               } else if (g200se->unique_rev_id >= 0x01) {
+                    hiprilvl = 3;
+               } else {
+                    hiprilvl = 4;
+               }
+
+               crtcext6 = hiprilvl; /* implicitly sets maxhipri to 0 */
+
+               WREG_ECRT(0x06, crtcext6);
           }
 
-          crtcext6 = hiprilvl; /* implicitly sets maxhipri to 0 */
+          static void mgag200_set_startadd(struct mga_device *mdev,
+                              unsigned long offset)
+          {
+               struct drm_device *dev = &mdev->base;
+               u32 startadd;
+               u8 crtcc, crtcd, crtcext0;
 
-          WREG_ECRT(0x06, crtcext6);
-     }
+               startadd = offset / 8;
 
-     static void mgag200_set_startadd(struct mga_device *mdev,
-                         unsigned long offset)
+               if (startadd > 0)
+                    drm_WARN_ON_ONCE(dev, mdev->info->bug_no_startadd);
+
+               /*
+               * Can't store addresses any higher than that, but we also
+               * don't have more than 16 MiB of memory, so it should be fine.
+               */
+               drm_WARN_ON(dev, startadd > 0x1fffff);
+
+               RREG_ECRT(0x00, crtcext0);
+
+               crtcc = (startadd >> 8) & 0xff;
+               crtcd = startadd & 0xff;
+               crtcext0 &= 0xb0;
+               crtcext0 |= ((startadd >> 14) & BIT(6)) |
+                    ((startadd >> 16) & 0x0f);
+
+               WREG_CRT(0x0c, crtcc);
+               WREG_CRT(0x0d, crtcd);
+               WREG_ECRT(0x00, crtcext0);
+          }
+
+          void mgag200_set_mode_regs(struct mga_device *mdev, const struct drm_display_mode *mode)
+          {
+               const struct mgag200_device_info *info = mdev->info;
+               unsigned int hdisplay, hsyncstart, hsyncend, htotal;
+               unsigned int vdisplay, vsyncstart, vsyncend, vtotal;
+               u8 misc, crtcext1, crtcext2, crtcext5;
+
+               hdisplay = mode->hdisplay / 8 - 1;
+               hsyncstart = mode->hsync_start / 8 - 1;
+               hsyncend = mode->hsync_end / 8 - 1;
+               htotal = mode->htotal / 8 - 1;
+
+               /* Work around hardware quirk */
+               if ((htotal & 0x07) == 0x06 || (htotal & 0x07) == 0x04)
+                    htotal++;
+
+               vdisplay = mode->vdisplay - 1;
+               vsyncstart = mode->vsync_start - 1;
+               vsyncend = mode->vsync_end - 1;
+               vtotal = mode->vtotal - 2;
+
+               misc = RREG8(MGA_MISC_IN);
+
+               if (mode->flags & DRM_MODE_FLAG_NHSYNC)
+                    misc |= MGAREG_MISC_HSYNCPOL;
+               else
+                    misc &= ~MGAREG_MISC_HSYNCPOL;
+
+               if (mode->flags & DRM_MODE_FLAG_NVSYNC)
+                    misc |= MGAREG_MISC_VSYNCPOL;
+               else
+                    misc &= ~MGAREG_MISC_VSYNCPOL;
+
+               crtcext1 = (((htotal - 4) & 0x100) >> 8) |
+                    ((hdisplay & 0x100) >> 7) |
+                    ((hsyncstart & 0x100) >> 6) |
+                    (htotal & 0x40);
+               if (info->has_vidrst)
+                    crtcext1 |= MGAREG_CRTCEXT1_VRSTEN |
+                         MGAREG_CRTCEXT1_HRSTEN;
+
+               crtcext2 = ((vtotal & 0xc00) >> 10) |
+                    ((vdisplay & 0x400) >> 8) |
+                    ((vdisplay & 0xc00) >> 7) |
+                    ((vsyncstart & 0xc00) >> 5) |
+                    ((vdisplay & 0x400) >> 3);
+               crtcext5 = 0x00;
+
+               WREG_CRT(0, htotal - 4);
+               WREG_CRT(1, hdisplay);
+               WREG_CRT(2, hdisplay);
+               WREG_CRT(3, (htotal & 0x1F) | 0x80);
+               WREG_CRT(4, hsyncstart);
+               WREG_CRT(5, ((htotal & 0x20) << 2) | (hsyncend & 0x1F));
+               WREG_CRT(6, vtotal & 0xFF);
+               WREG_CRT(7, ((vtotal & 0x100) >> 8) |
+                    ((vdisplay & 0x100) >> 7) |
+                    ((vsyncstart & 0x100) >> 6) |
+                    ((vdisplay & 0x100) >> 5) |
+                    ((vdisplay & 0x100) >> 4) | /* linecomp */
+                    ((vtotal & 0x200) >> 4) |
+                    ((vdisplay & 0x200) >> 3) |
+                    ((vsyncstart & 0x200) >> 2));
+               WREG_CRT(9, ((vdisplay & 0x200) >> 4) |
+                    ((vdisplay & 0x200) >> 3));
+               WREG_CRT(16, vsyncstart & 0xFF);
+               WREG_CRT(17, (vsyncend & 0x0F) | 0x20);
+               WREG_CRT(18, vdisplay & 0xFF);
+               WREG_CRT(20, 0);
+               WREG_CRT(21, vdisplay & 0xFF);
+               WREG_CRT(22, (vtotal + 1) & 0xFF);
+               WREG_CRT(23, 0xc3);
+               WREG_CRT(24, vdisplay & 0xFF);
+
+               WREG_ECRT(0x01, crtcext1);
+               WREG_ECRT(0x02, crtcext2);
+               WREG_ECRT(0x05, crtcext5);
+
+               WREG8(MGA_MISC_OUT, misc);
+          }
+
+     static void mgag200_set_offset(struct mga_device *mdev,
+                         const struct drm_framebuffer *fb)
      {
-          struct drm_device *dev = &mdev->base;
-          u32 startadd;
-          u8 crtcc, crtcd, crtcext0;
+          u8 crtc13, crtcext0;
+          u32 offset = mgag200_calculate_offset(mdev, fb);
 
-          startadd = offset / 8;
+          RREG_ECRT(0, crtcext0);
 
-          if (startadd > 0)
-               drm_WARN_ON_ONCE(dev, mdev->info->bug_no_startadd);
+          crtc13 = offset & 0xff;
 
-          /*
-          * Can't store addresses any higher than that, but we also
-          * don't have more than 16 MiB of memory, so it should be fine.
-          */
-          drm_WARN_ON(dev, startadd > 0x1fffff);
+          crtcext0 &= ~MGAREG_CRTCEXT0_OFFSET_MASK;
+          crtcext0 |= (offset >> 4) & MGAREG_CRTCEXT0_OFFSET_MASK;
 
-          RREG_ECRT(0x00, crtcext0);
-
-          crtcc = (startadd >> 8) & 0xff;
-          crtcd = startadd & 0xff;
-          crtcext0 &= 0xb0;
-          crtcext0 |= ((startadd >> 14) & BIT(6)) |
-               ((startadd >> 16) & 0x0f);
-
-          WREG_CRT(0x0c, crtcc);
-          WREG_CRT(0x0d, crtcd);
+          WREG_CRT(0x13, crtc13);
           WREG_ECRT(0x00, crtcext0);
      }
 
-     void mgag200_set_mode_regs(struct mga_device *mdev, const struct drm_display_mode *mode)
+     void mgag200_set_format_regs(struct mga_device *mdev, const struct drm_format_info *format)
      {
-          const struct mgag200_device_info *info = mdev->info;
-          unsigned int hdisplay, hsyncstart, hsyncend, htotal;
-          unsigned int vdisplay, vsyncstart, vsyncend, vtotal;
-          u8 misc, crtcext1, crtcext2, crtcext5;
+          struct drm_device *dev = &mdev->base;
+          unsigned int bpp, bppshift, scale;
+          u8 crtcext3, xmulctrl;
 
-          hdisplay = mode->hdisplay / 8 - 1;
-          hsyncstart = mode->hsync_start / 8 - 1;
-          hsyncend = mode->hsync_end / 8 - 1;
-          htotal = mode->htotal / 8 - 1;
+          bpp = format->cpp[0] * 8;
 
-          /* Work around hardware quirk */
-          if ((htotal & 0x07) == 0x06 || (htotal & 0x07) == 0x04)
-               htotal++;
+          bppshift = mgag200_get_bpp_shift(format);
+          switch (bpp) {
+          case 24:
+               scale = ((1 << bppshift) * 3) - 1;
+               break;
+          default:
+               scale = (1 << bppshift) - 1;
+               break;
+          }
 
-          vdisplay = mode->vdisplay - 1;
-          vsyncstart = mode->vsync_start - 1;
-          vsyncend = mode->vsync_end - 1;
-          vtotal = mode->vtotal - 2;
+          RREG_ECRT(3, crtcext3);
 
-          misc = RREG8(MGA_MISC_IN);
+          switch (bpp) {
+          case 8:
+               xmulctrl = MGA1064_MUL_CTL_8bits;
+               break;
+          case 16:
+               if (format->depth == 15)
+                    xmulctrl = MGA1064_MUL_CTL_15bits;
+               else
+                    xmulctrl = MGA1064_MUL_CTL_16bits;
+               break;
+          case 24:
+               xmulctrl = MGA1064_MUL_CTL_24bits;
+               break;
+          case 32:
+               xmulctrl = MGA1064_MUL_CTL_32_24bits;
+               break;
+          default:
+               /* BUG: We should have caught this problem already. */
+               drm_WARN_ON(dev, "invalid format depth\n");
+               return;
+          }
 
-          if (mode->flags & DRM_MODE_FLAG_NHSYNC)
-               misc |= MGAREG_MISC_HSYNCPOL;
-          else
-               misc &= ~MGAREG_MISC_HSYNCPOL;
+          crtcext3 &= ~GENMASK(2, 0);
+          crtcext3 |= scale;
 
-          if (mode->flags & DRM_MODE_FLAG_NVSYNC)
-               misc |= MGAREG_MISC_VSYNCPOL;
-          else
-               misc &= ~MGAREG_MISC_VSYNCPOL;
+          WREG_DAC(MGA1064_MUL_CTL, xmulctrl);
 
-          crtcext1 = (((htotal - 4) & 0x100) >> 8) |
-               ((hdisplay & 0x100) >> 7) |
-               ((hsyncstart & 0x100) >> 6) |
-               (htotal & 0x40);
-          if (info->has_vidrst)
-               crtcext1 |= MGAREG_CRTCEXT1_VRSTEN |
-                    MGAREG_CRTCEXT1_HRSTEN;
+          WREG_GFX(0, 0x00);
+          WREG_GFX(1, 0x00);
+          WREG_GFX(2, 0x00);
+          WREG_GFX(3, 0x00);
+          WREG_GFX(4, 0x00);
+          WREG_GFX(5, 0x40);
+          /* GCTL6 should be 0x05, but we configure memmapsl to 0xb8000 (text mode),
+          * so that it doesn't hang when running kexec/kdump on G200_SE rev42.
+          */
+          WREG_GFX(6, 0x0d);
+          WREG_GFX(7, 0x0f);
+          WREG_GFX(8, 0x0f);
 
-          crtcext2 = ((vtotal & 0xc00) >> 10) |
-               ((vdisplay & 0x400) >> 8) |
-               ((vdisplay & 0xc00) >> 7) |
-               ((vsyncstart & 0xc00) >> 5) |
-               ((vdisplay & 0x400) >> 3);
-          crtcext5 = 0x00;
-
-          WREG_CRT(0, htotal - 4);
-          WREG_CRT(1, hdisplay);
-          WREG_CRT(2, hdisplay);
-          WREG_CRT(3, (htotal & 0x1F) | 0x80);
-          WREG_CRT(4, hsyncstart);
-          WREG_CRT(5, ((htotal & 0x20) << 2) | (hsyncend & 0x1F));
-          WREG_CRT(6, vtotal & 0xFF);
-          WREG_CRT(7, ((vtotal & 0x100) >> 8) |
-               ((vdisplay & 0x100) >> 7) |
-               ((vsyncstart & 0x100) >> 6) |
-               ((vdisplay & 0x100) >> 5) |
-               ((vdisplay & 0x100) >> 4) | /* linecomp */
-               ((vtotal & 0x200) >> 4) |
-               ((vdisplay & 0x200) >> 3) |
-               ((vsyncstart & 0x200) >> 2));
-          WREG_CRT(9, ((vdisplay & 0x200) >> 4) |
-               ((vdisplay & 0x200) >> 3));
-          WREG_CRT(16, vsyncstart & 0xFF);
-          WREG_CRT(17, (vsyncend & 0x0F) | 0x20);
-          WREG_CRT(18, vdisplay & 0xFF);
-          WREG_CRT(20, 0);
-          WREG_CRT(21, vdisplay & 0xFF);
-          WREG_CRT(22, (vtotal + 1) & 0xFF);
-          WREG_CRT(23, 0xc3);
-          WREG_CRT(24, vdisplay & 0xFF);
-
-          WREG_ECRT(0x01, crtcext1);
-          WREG_ECRT(0x02, crtcext2);
-          WREG_ECRT(0x05, crtcext5);
-
-          WREG8(MGA_MISC_OUT, misc);
+          WREG_ECRT(3, crtcext3);
      }
 
-static void mgag200_set_offset(struct mga_device *mdev,
-			       const struct drm_framebuffer *fb)
-{
-	u8 crtc13, crtcext0;
-	u32 offset = mgag200_calculate_offset(mdev, fb);
+     void mgag200_enable_display(struct mga_device *mdev)
+     {
+          u8 seq0, crtcext1;
 
-	RREG_ECRT(0, crtcext0);
+          RREG_SEQ(0x00, seq0);
+          seq0 |= MGAREG_SEQ0_SYNCRST |
+               MGAREG_SEQ0_ASYNCRST;
+          WREG_SEQ(0x00, seq0);
 
-	crtc13 = offset & 0xff;
+          /*
+          * TODO: replace busy waiting with vblank IRQ; put
+          *       msleep(50) before changing SCROFF
+          */
+          mga_wait_vsync(mdev);
+          mga_wait_busy(mdev);
 
-	crtcext0 &= ~MGAREG_CRTCEXT0_OFFSET_MASK;
-	crtcext0 |= (offset >> 4) & MGAREG_CRTCEXT0_OFFSET_MASK;
+          RREG_ECRT(0x01, crtcext1);
+          crtcext1 &= ~MGAREG_CRTCEXT1_VSYNCOFF;
+          crtcext1 &= ~MGAREG_CRTCEXT1_HSYNCOFF;
+          WREG_ECRT(0x01, crtcext1);
+     }
 
-	WREG_CRT(0x13, crtc13);
-	WREG_ECRT(0x00, crtcext0);
-}
+     static void mgag200_disable_display(struct mga_device *mdev)
+     {
+          u8 seq0, crtcext1;
 
-void mgag200_set_format_regs(struct mga_device *mdev, const struct drm_format_info *format)
-{
-	struct drm_device *dev = &mdev->base;
-	unsigned int bpp, bppshift, scale;
-	u8 crtcext3, xmulctrl;
+          RREG_SEQ(0x00, seq0);
+          seq0 &= ~MGAREG_SEQ0_SYNCRST;
+          WREG_SEQ(0x00, seq0);
 
-	bpp = format->cpp[0] * 8;
+          /*
+          * TODO: replace busy waiting with vblank IRQ; put
+          *       msleep(50) before changing SCROFF
+          */
+          mga_wait_vsync(mdev);
+          mga_wait_busy(mdev);
 
-	bppshift = mgag200_get_bpp_shift(format);
-	switch (bpp) {
-	case 24:
-		scale = ((1 << bppshift) * 3) - 1;
-		break;
-	default:
-		scale = (1 << bppshift) - 1;
-		break;
-	}
-
-	RREG_ECRT(3, crtcext3);
-
-	switch (bpp) {
-	case 8:
-		xmulctrl = MGA1064_MUL_CTL_8bits;
-		break;
-	case 16:
-		if (format->depth == 15)
-			xmulctrl = MGA1064_MUL_CTL_15bits;
-		else
-			xmulctrl = MGA1064_MUL_CTL_16bits;
-		break;
-	case 24:
-		xmulctrl = MGA1064_MUL_CTL_24bits;
-		break;
-	case 32:
-		xmulctrl = MGA1064_MUL_CTL_32_24bits;
-		break;
-	default:
-		/* BUG: We should have caught this problem already. */
-		drm_WARN_ON(dev, "invalid format depth\n");
-		return;
-	}
-
-	crtcext3 &= ~GENMASK(2, 0);
-	crtcext3 |= scale;
-
-	WREG_DAC(MGA1064_MUL_CTL, xmulctrl);
-
-	WREG_GFX(0, 0x00);
-	WREG_GFX(1, 0x00);
-	WREG_GFX(2, 0x00);
-	WREG_GFX(3, 0x00);
-	WREG_GFX(4, 0x00);
-	WREG_GFX(5, 0x40);
-	/* GCTL6 should be 0x05, but we configure memmapsl to 0xb8000 (text mode),
-	 * so that it doesn't hang when running kexec/kdump on G200_SE rev42.
-	 */
-	WREG_GFX(6, 0x0d);
-	WREG_GFX(7, 0x0f);
-	WREG_GFX(8, 0x0f);
-
-	WREG_ECRT(3, crtcext3);
-}
-
-void mgag200_enable_display(struct mga_device *mdev)
-{
-	u8 seq0, crtcext1;
-
-	RREG_SEQ(0x00, seq0);
-	seq0 |= MGAREG_SEQ0_SYNCRST |
-		MGAREG_SEQ0_ASYNCRST;
-	WREG_SEQ(0x00, seq0);
-
-	/*
-	 * TODO: replace busy waiting with vblank IRQ; put
-	 *       msleep(50) before changing SCROFF
-	 */
-	mga_wait_vsync(mdev);
-	mga_wait_busy(mdev);
-
-	RREG_ECRT(0x01, crtcext1);
-	crtcext1 &= ~MGAREG_CRTCEXT1_VSYNCOFF;
-	crtcext1 &= ~MGAREG_CRTCEXT1_HSYNCOFF;
-	WREG_ECRT(0x01, crtcext1);
-}
-
-static void mgag200_disable_display(struct mga_device *mdev)
-{
-	u8 seq0, crtcext1;
-
-	RREG_SEQ(0x00, seq0);
-	seq0 &= ~MGAREG_SEQ0_SYNCRST;
-	WREG_SEQ(0x00, seq0);
-
-	/*
-	 * TODO: replace busy waiting with vblank IRQ; put
-	 *       msleep(50) before changing SCROFF
-	 */
-	mga_wait_vsync(mdev);
-	mga_wait_busy(mdev);
-
-	RREG_ECRT(0x01, crtcext1);
-	crtcext1 |= MGAREG_CRTCEXT1_VSYNCOFF |
-		    MGAREG_CRTCEXT1_HSYNCOFF;
-	WREG_ECRT(0x01, crtcext1);
-}
+          RREG_ECRT(0x01, crtcext1);
+          crtcext1 |= MGAREG_CRTCEXT1_VSYNCOFF |
+               MGAREG_CRTCEXT1_HSYNCOFF;
+          WREG_ECRT(0x01, crtcext1);
+     }
 ---------------------------------------------------------Motion planer -------------------------------------------------------------------------------
-#This sctructure hold most neccessery data of Hal - emcmot_hal_data
-#file Location :linuxcnc/src/emc/motion/mot_priv.h
-main work at :linuxcnc/src/Axis/Axis.py
-in this G-code parsing  line-1580
+     #This sctructure hold most neccessery data of Hal - emcmot_hal_data
+     #file Location :linuxcnc/src/emc/motion/mot_priv.h
+     main work at :linuxcnc/src/Axis/Axis.py
+     in this G-code parsing  line-1580
+--------------------------------------------------------- G-code Interpreter -----------------------------------------------------------------------------
+     What is motion engine ..?
+     what it consist..?
+     what are the thing i  need to create a motion engine ..?
+     line 154 
+     build perticular thing $ cd linuxcnc-source-dir/src
+     $ make 
+     code referance form linuxcnc/src/usr_intr/axis.py
+     #here noted functions which is related to G-code interpolation(file parsing and filtering and status)
 
----------------------------------------------------------- Motion Engine -----------------------------------------------------------------------------
-What is motion engine ..?
-what it consist..?
-what are the thing i  need to create a motion engine ..?
+     def parse_gcode_expression(e):
+     f = os.path.devnull
+     canon = DummyCanon()
 
-line 154
+     parameter = inifile.find("RS274NGC", "PARAMETER_FILE")
+     temp_parameter = os.path.join(tempdir, os.path.basename(parameter))
+     shutil.copy(parameter, temp_parameter)
+     canon.parameter_file = temp_parameter
 
- 
-build perticular thing $ cd linuxcnc-source-dir/src
-$ make 
+     result, seq = gcode.parse("", canon, "M199 P["+e+"]", "M2")
+     if result > gcode.MIN_ERROR: return False, gcode.strerror(result)
+     return True, canon.number
 
-
-code referance form linuxcnc/src/usr_intr/axis.py
-#here noted functions which is related to G-code interpolation
-
-def parse_gcode_expression(e):
-    f = os.path.devnull
-    canon = DummyCanon()
-
-    parameter = inifile.find("RS274NGC", "PARAMETER_FILE")
-    temp_parameter = os.path.join(tempdir, os.path.basename(parameter))
-    shutil.copy(parameter, temp_parameter)
-    canon.parameter_file = temp_parameter
-
-    result, seq = gcode.parse("", canon, "M199 P["+e+"]", "M2")
-    if result > gcode.MIN_ERROR: return False, gcode.strerror(result)
-    return True, canon.number
-
-progress_re = re.compile("^FILTER_PROGRESS=(\\d*)$")
-def filter_program(program_filter, infilename, outfilename):
-    import subprocess
-    outfile = open(outfilename, "w")
-    infilename_q = infilename.replace("'", "'\\''")
-    env = dict(os.environ)
-    env['AXIS_PROGRESS_BAR'] = '1'
-    p = subprocess.Popen(["sh", "-c", "%s '%s'" % (program_filter, infilename_q)],
-                          stdin=subprocess.PIPE,
-                          stdout=outfile,
-                          stderr=subprocess.PIPE,
-                          env=env)
-    p.stdin.close()  # No input for you
-    progress = Progress(1, 100)
-    progress.set_text(_("Filtering..."))
-    stderr_text = []
-    try:
-        while p.poll() is None: # XXX add checking for abort
-            t.update()
-            r,w,x = select.select([p.stderr], [], [], 0.100)
-            if r:
-                stderr_line = p.stderr.readline().decode()
-                m = progress_re.match(stderr_line)
-                if m:
-                    progress.update(int(m.group(1)), 1)
-                else:
+     progress_re = re.compile("^FILTER_PROGRESS=(\\d*)$")
+     def filter_program(program_filter, infilename, outfilename):
+     import subprocess
+     outfile = open(outfilename, "w")
+     infilename_q = infilename.replace("'", "'\\''")
+     env = dict(os.environ)
+     env['AXIS_PROGRESS_BAR'] = '1'
+     p = subprocess.Popen(["sh", "-c", "%s '%s'" % (program_filter, infilename_q)],
+                              stdin=subprocess.PIPE,
+                              stdout=outfile,
+                              stderr=subprocess.PIPE,
+                              env=env)
+     p.stdin.close()  # No input for you
+     progress = Progress(1, 100)
+     progress.set_text(_("Filtering..."))
+     stderr_text = []
+     try:
+          while p.poll() is None: # XXX add checking for abort
+               t.update()
+               r,w,x = select.select([p.stderr], [], [], 0.100)
+               if r:
+                    stderr_line = p.stderr.readline().decode()
+                    m = progress_re.match(stderr_line)
+                    if m:
+                         progress.update(int(m.group(1)), 1)
+                    else:
+                         stderr_text.append(stderr_line)
+                         sys.stderr.write(stderr_line)
+          # .. might be something left on stderr
+          for line in p.stderr:
+               stderr_line = line.decode()
+               m = progress_re.match(stderr_line)
+               if not m:
                     stderr_text.append(stderr_line)
                     sys.stderr.write(stderr_line)
-        # .. might be something left on stderr
-        for line in p.stderr:
-            stderr_line = line.decode()
-            m = progress_re.match(stderr_line)
-            if not m:
-                stderr_text.append(stderr_line)
-                sys.stderr.write(stderr_line)
-        return p.returncode, "".join(stderr_text)
-    finally:
-        progress.done()
+          return p.returncode, "".join(stderr_text)
+     finally:
+          progress.done()
 
-def get_filter(filename):
-    ext = os.path.splitext(filename)[1]
-    if ext:
-        return inifile.find("FILTER", ext[1:])
-    else:
-        return None
+     def get_filter(filename):
+     ext = os.path.splitext(filename)[1]
+     if ext:
+          return inifile.find("FILTER", ext[1:])
+     else:
+          return None
 
-def reload_file(refilter=True):
-    if running(): return
-    s.poll()
-    if not loaded_file:
-        root_window.tk.call("set_mode_from_tab")
-        return
-    line = vars.highlight_line.get()
-    o.set_highlight_line(None)
+     def reload_file(refilter=True):
+     if running(): return
+     s.poll()
+     if not loaded_file:
+          root_window.tk.call("set_mode_from_tab")
+          return
+     line = vars.highlight_line.get()
+     o.set_highlight_line(None)
 
-    if refilter or not get_filter(loaded_file):
-        # we copy the file to a temporary file so that even if it subsequently
-        # changes on disk, LinuxCNC is parsing the file contents from the time
-        # the user opened the file
-        tempfile = os.path.join(tempdir, os.path.basename(loaded_file))
-        shutil.copyfile(loaded_file, tempfile)
-        open_file_guts(tempfile, False, False)
-    else:
-        tempfile = os.path.join(tempdir, "filtered-" + os.path.basename(loaded_file))
-        open_file_guts(tempfile, True, False)
-    if line:
-        o.set_highlight_line(line)
+     if refilter or not get_filter(loaded_file):
+          # we copy the file to a temporary file so that even if it subsequently
+          # changes on disk, LinuxCNC is parsing the file contents from the time
+          # the user opened the file
+          tempfile = os.path.join(tempdir, os.path.basename(loaded_file))
+          shutil.copyfile(loaded_file, tempfile)
+          open_file_guts(tempfile, False, False)
+     else:
+          tempfile = os.path.join(tempdir, "filtered-" + os.path.basename(loaded_file))
+          open_file_guts(tempfile, True, False)
+     if line:
+          o.set_highlight_line(line)
 
-def open_file_guts(f, filtered=False, addrecent=True):
-    s.poll()
-    save_task_mode = s.task_mode
-    ensure_mode(linuxcnc.MODE_MANUAL)
-    if addrecent:
-        add_recent_file(f)
-    if not filtered:
-        program_filter = get_filter(f)
-        if program_filter:
-            tempfile = os.path.join(tempdir, "filtered-" + os.path.basename(f))
-            exitcode, stderr = filter_program(program_filter, f, tempfile)
-            if exitcode:
-                root_window.tk.call("nf_dialog", (".error", "-ext", stderr),
-                        _("Filter failed"),
-                        _("The program %(program)r exited with code %(code)d.  "
-                        "Any error messages it produced are shown below:")
-                            % {'program': program_filter, 'code': exitcode},
-                        "error",0,_("OK"))
-                return
-            ensure_mode(save_task_mode)
-            return open_file_guts(tempfile, True, False)
+     def open_file_guts(f, filtered=False, addrecent=True):
+     s.poll()
+     save_task_mode = s.task_mode
+     ensure_mode(linuxcnc.MODE_MANUAL)
+     if addrecent:
+          add_recent_file(f)
+     if not filtered:
+          program_filter = get_filter(f)
+          if program_filter:
+               tempfile = os.path.join(tempdir, "filtered-" + os.path.basename(f))
+               exitcode, stderr = filter_program(program_filter, f, tempfile)
+               if exitcode:
+                    root_window.tk.call("nf_dialog", (".error", "-ext", stderr),
+                         _("Filter failed"),
+                         _("The program %(program)r exited with code %(code)d.  "
+                         "Any error messages it produced are shown below:")
+                              % {'program': program_filter, 'code': exitcode},
+                         "error",0,_("OK"))
+                    return
+               ensure_mode(save_task_mode)
+               return open_file_guts(tempfile, True, False)
 
-    ensure_mode(save_task_mode)
-    set_first_line(0)
-    t0 = time.time()
+     ensure_mode(save_task_mode)
+     set_first_line(0)
+     t0 = time.time()
 
-    canon = None
-    o.deselect(None) # remove highlight line from last program
-    try:
-        # Force a sync of the interpreter, which writes out the var file.
-        c.task_plan_synch()
-        c.wait_complete()
-        c.program_open(f)
-        lines = open(f).readlines()
-        progress = Progress(2, len(lines))
-        t.configure(state="normal")
-        t.tk.call("delete_all", t)
-        code = []
-        i = 0
-        for i, l in enumerate(lines):
-            l = l.expandtabs().replace("\r", "")
-            #t.insert("end", "%6d: " % (i+1), "lineno", l)
-            code.extend(["%6d: " % (i+1), "lineno", l, ""])
-            if i % 1000 == 0:
-                t.insert("end", *code)
-                del code[:]
-                progress.update(i)
-        if code:
-            t.insert("end", *code)
-        progress.nextphase(len(lines))
-        f = os.path.abspath(f)
-        o.canon = canon = AxisCanon(o, widgets.text, i, progress, arcdivision)
-        root_window.bind_class(".info.progress", "<Escape>", cancel_open)
+     canon = None
+     o.deselect(None) # remove highlight line from last program
+     try:
+          # Force a sync of the interpreter, which writes out the var file.
+          c.task_plan_synch()
+          c.wait_complete()
+          c.program_open(f)
+          lines = open(f).readlines()
+          progress = Progress(2, len(lines))
+          t.configure(state="normal")
+          t.tk.call("delete_all", t)
+          code = []
+          i = 0
+          for i, l in enumerate(lines):
+               l = l.expandtabs().replace("\r", "")
+               #t.insert("end", "%6d: " % (i+1), "lineno", l)
+               code.extend(["%6d: " % (i+1), "lineno", l, ""])
+               if i % 1000 == 0:
+                    t.insert("end", *code)
+                    del code[:]
+                    progress.update(i)
+          if code:
+               t.insert("end", *code)
+          progress.nextphase(len(lines))
+          f = os.path.abspath(f)
+          o.canon = canon = AxisCanon(o, widgets.text, i, progress, arcdivision)
+          root_window.bind_class(".info.progress", "<Escape>", cancel_open)
 
-        parameter = inifile.find("RS274NGC", "PARAMETER_FILE")
-        temp_parameter = os.path.join(tempdir, os.path.basename(parameter))
-        if os.path.exists(parameter):
-            shutil.copy(parameter, temp_parameter)
-        canon.parameter_file = temp_parameter
+          parameter = inifile.find("RS274NGC", "PARAMETER_FILE")
+          temp_parameter = os.path.join(tempdir, os.path.basename(parameter))
+          if os.path.exists(parameter):
+               shutil.copy(parameter, temp_parameter)
+          canon.parameter_file = temp_parameter
 
-        timeout = inifile.find("DISPLAY", "PREVIEW_TIMEOUT") or ""
-        if timeout:
-            canon.set_timeout(float(timeout))
+          timeout = inifile.find("DISPLAY", "PREVIEW_TIMEOUT") or ""
+          if timeout:
+               canon.set_timeout(float(timeout))
 
-        initcode = inifile.find("EMC", "RS274NGC_STARTUP_CODE") or ""
-        if initcode == "":
-            initcode = inifile.find("RS274NGC", "RS274NGC_STARTUP_CODE") or ""
-        initcodes = []
-        if initcode:
-            initcodes.append(initcode)
-        if not interpname:
-            unitcode = "G%d" % (20 + (s.linear_units == 1))
-            initcodes.append(unitcode)
-            initcodes.append("g90")
-            initcodes.append("t%d m6" % s.tool_in_spindle)
-            for i in range(9):
-                if s.axis_mask & (1<<i):
-                    axis = "XYZABCUVW"[i]
+          initcode = inifile.find("EMC", "RS274NGC_STARTUP_CODE") or ""
+          if initcode == "":
+               initcode = inifile.find("RS274NGC", "RS274NGC_STARTUP_CODE") or ""
+          initcodes = []
+          if initcode:
+               initcodes.append(initcode)
+          if not interpname:
+               unitcode = "G%d" % (20 + (s.linear_units == 1))
+               initcodes.append(unitcode)
+               initcodes.append("g90")
+               initcodes.append("t%d m6" % s.tool_in_spindle)
+               for i in range(9):
+                    if s.axis_mask & (1<<i):
+                         axis = "XYZABCUVW"[i]
 
-                    if (axis == "A" and a_axis_wrapped) or\
-                       (axis == "B" and b_axis_wrapped) or\
-                       (axis == "C" and c_axis_wrapped):
-                        pos = s.position[i] % 360.000
+                         if (axis == "A" and a_axis_wrapped) or\
+                         (axis == "B" and b_axis_wrapped) or\
+                         (axis == "C" and c_axis_wrapped):
+                         pos = s.position[i] % 360.000
+                         else:
+                         pos = s.position[i]
+
+                         position = "g53 g0 %s%.8f" % (axis, pos)
+                         initcodes.append(position)
+               for i, g in enumerate(s.gcodes):
+                    # index 0 is "sequence number" and index 2 is the last block's
+                    # "g_mode" neither of which should be sent as a startup code.
+                    # In particular, after issuing a non-modal G like G10, that
+                    # will appear at s.gcodes[2] which caused issue #269
+                    if i in (0, 1, 2): continue
+                    if g == -1: continue
+                    if g == 960: # Issue #1232
+                         initcodes.append("G96 S%.0f" % s.settings[2])
                     else:
-                        pos = s.position[i]
+                         initcodes.append("G%.1f" % (g * .1))
+               tool_offset = "G43.1"
+               for i in range(9):
+                    if s.axis_mask & (1<<i):
+                         tool_offset += " %s%.8f" % ("XYZABCUVW"[i], s.tool_offset[i])
+               initcodes.append(tool_offset)
+               for i, m in enumerate(s.mcodes):
+                    # index 0 is "sequence number", just like s.gcodes[0].  Trying
+                    # to set this number as a modal code caused issue #271.
+                    # index 1 is the stopping code, which holds M2 after reading
+                    # ahead to the end of a program.  Trying to set this number
+                    # as a modal code makes the next preview disappear.
+                    # (see Interp::write_m_codes)
+                    if i in (0,1): continue
+                    if m == -1: continue
+                    initcodes.append("M%d" % m)
+          try:
+               result, seq = o.load_preview(f, canon, initcodes, interpname)
+          except KeyboardInterrupt:
+               result, seq = 0, 0
+          # According to the documentation, MIN_ERROR is the largest value that is
+          # not an error.  Crazy though that sounds...
+          if result > gcode.MIN_ERROR:
+               error_str = _(gcode.strerror(result))
+               root_window.tk.call("nf_dialog", ".error",
+                         _("G-Code error in %s") % os.path.basename(f),
+                         _("Near line %(seq)d of %(f)s:\n%(error_str)s") % {'seq': seq, 'f': f, 'error_str': error_str},
+                         "error",0,_("OK"))
 
-                    position = "g53 g0 %s%.8f" % (axis, pos)
-                    initcodes.append(position)
-            for i, g in enumerate(s.gcodes):
-                # index 0 is "sequence number" and index 2 is the last block's
-                # "g_mode" neither of which should be sent as a startup code.
-                # In particular, after issuing a non-modal G like G10, that
-                # will appear at s.gcodes[2] which caused issue #269
-                if i in (0, 1, 2): continue
-                if g == -1: continue
-                if g == 960: # Issue #1232
-                    initcodes.append("G96 S%.0f" % s.settings[2])
-                else:
-                    initcodes.append("G%.1f" % (g * .1))
-            tool_offset = "G43.1"
-            for i in range(9):
-                if s.axis_mask & (1<<i):
-                    tool_offset += " %s%.8f" % ("XYZABCUVW"[i], s.tool_offset[i])
-            initcodes.append(tool_offset)
-            for i, m in enumerate(s.mcodes):
-                # index 0 is "sequence number", just like s.gcodes[0].  Trying
-                # to set this number as a modal code caused issue #271.
-                # index 1 is the stopping code, which holds M2 after reading
-                # ahead to the end of a program.  Trying to set this number
-                # as a modal code makes the next preview disappear.
-                # (see Interp::write_m_codes)
-                if i in (0,1): continue
-                if m == -1: continue
-                initcodes.append("M%d" % m)
-        try:
-            result, seq = o.load_preview(f, canon, initcodes, interpname)
-        except KeyboardInterrupt:
-            result, seq = 0, 0
-        # According to the documentation, MIN_ERROR is the largest value that is
-        # not an error.  Crazy though that sounds...
-        if result > gcode.MIN_ERROR:
-            error_str = _(gcode.strerror(result))
-            root_window.tk.call("nf_dialog", ".error",
-                    _("G-Code error in %s") % os.path.basename(f),
-                    _("Near line %(seq)d of %(f)s:\n%(error_str)s") % {'seq': seq, 'f': f, 'error_str': error_str},
-                    "error",0,_("OK"))
+          t.configure(state="disabled")
+          o.lp.set_depth(from_internal_linear_unit(o.get_foam_z()),
+                         from_internal_linear_unit(o.get_foam_w()))
 
-        t.configure(state="disabled")
-        o.lp.set_depth(from_internal_linear_unit(o.get_foam_z()),
-                       from_internal_linear_unit(o.get_foam_w()))
+     except Exception as e:
+          notifications.add("error", str(e))
+     finally:
+          # Before unbusying, I update again, so that any keystroke events
+          # that reached the program while it was busy are sent to the
+          # label, not to another window in the application.  If this
+          # update call is removed, the events are only handled after that
+          # widget is destroyed and focus has passed to some other widget,
+          # which will handle the keystrokes instead, leading to the
+          # R-while-loading bug.
+          #print "load_time", time.time() - t0
+          root_window.update()
+          root_window.tk.call("destroy", ".info.progress")
+          root_window.tk.call("grab", "release", ".info.progress")
+          if canon:
+               canon.progress = DummyProgress()
+          try:
+               progress.done()
+          except UnboundLocalError:
+               pass
+          o.tkRedraw()
+          root_window.tk.call("set_mode_from_tab")
 
-    except Exception as e:
-        notifications.add("error", str(e))
-    finally:
-        # Before unbusying, I update again, so that any keystroke events
-        # that reached the program while it was busy are sent to the
-        # label, not to another window in the application.  If this
-        # update call is removed, the events are only handled after that
-        # widget is destroyed and focus has passed to some other widget,
-        # which will handle the keystrokes instead, leading to the
-        # R-while-loading bug.
-        #print "load_time", time.time() - t0
-        root_window.update()
-        root_window.tk.call("destroy", ".info.progress")
-        root_window.tk.call("grab", "release", ".info.progress")
-        if canon:
-            canon.progress = DummyProgress()
-        try:
-            progress.done()
-        except UnboundLocalError:
-            pass
-        o.tkRedraw()
-        root_window.tk.call("set_mode_from_tab")
+     def interp_statename(x):
+     if x ==    linuxcnc.INTERP_IDLE: return "IDLE"
+     if x == linuxcnc.INTERP_READING: return "READING"
+     if x ==  linuxcnc.INTERP_PAUSED: return "PAUSED"
+     if x == linuxcnc.INTERP_WAITING: return "WAITING"
 
-def interp_statename(x):
-    if x ==    linuxcnc.INTERP_IDLE: return "IDLE"
-    if x == linuxcnc.INTERP_READING: return "READING"
-    if x ==  linuxcnc.INTERP_PAUSED: return "PAUSED"
-    if x == linuxcnc.INTERP_WAITING: return "WAITING"
+     def motion_modename(x):
+     if x ==   linuxcnc.TRAJ_MODE_FREE: return "FREE"
+     if x ==  linuxcnc.TRAJ_MODE_COORD: return "COORD"
+     if x == linuxcnc.TRAJ_MODE_TELEOP: return "TELEOP"
 
-def motion_modename(x):
-    if x ==   linuxcnc.TRAJ_MODE_FREE: return "FREE"
-    if x ==  linuxcnc.TRAJ_MODE_COORD: return "COORD"
-    if x == linuxcnc.TRAJ_MODE_TELEOP: return "TELEOP"
+     def task_modename(x):
+     if x ==    linuxcnc.MODE_MDI: return "MDI"
+     if x == linuxcnc.MODE_MANUAL: return "MANUAL"
+     if x ==   linuxcnc.MODE_AUTO: return "AUTO"
 
-def task_modename(x):
-    if x ==    linuxcnc.MODE_MDI: return "MDI"
-    if x == linuxcnc.MODE_MANUAL: return "MANUAL"
-    if x ==   linuxcnc.MODE_AUTO: return "AUTO"
+ #upto this about file G code file handling and adding filters 
+ # Below i written about interpreter -RS274NGC
+  file location: linuxcnc/src/emc/rs274ngc/
+
+---------------------------------------------------------5. GUI------------------------------------------------------------------------------------------------
+     Here there using 3-4 different type of GUI
+      1. QT
+      2. tkinter(python libraries)
+      3. GTK+
+      4. OpenGL 
