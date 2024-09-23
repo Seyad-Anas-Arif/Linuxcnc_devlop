@@ -6,13 +6,13 @@ Steps to Build qt Application
      3. Motion controller
      4. Hal layer
      5. QT GUI
---------------------------------------------------------Doubt section---------------------------------------------------------
- what are the questions i have now is.
+--------------------------------------------------------Doubt section----------------------------------------------------------------------------
+  what are the questions i have now is.
      1. which file are folder is for G-code Interpretation?
      2. which file or folder is for Motion planer and motion controller ?
      3. How to link ethercat to QT.?
 
----------------------------------------------------------1. Ethercat -------------------------------------------------------------
+---------------------------------------------------------1. Ethercat ---------------------------------------------------------------------------------
  Reference For ethercat master: https://gitlab.com/etherlab.org/ethercat
  Linuxcnc ethercat : https://github.com/linuxcnc-ethercat/linuxcnc-ethercat
 
@@ -395,13 +395,15 @@ Steps to Build qt Application
                MGAREG_CRTCEXT1_HSYNCOFF;
           WREG_ECRT(0x01, crtcext1);
      }
----------------------------------------------------------Motion planer -------------------------------------------------------------------------------
+---------------------------------------------------------2. Motion planer -------------------------------------------------------------------------------
      #This sctructure hold most neccessery data of Hal - emcmot_hal_data
      #file Location :linuxcnc/src/emc/motion/mot_priv.h
      main work at :linuxcnc/src/Axis/Axis.py
      in this G-code parsing  line-1580
---------------------------------------------------------- G-code Interpreter -----------------------------------------------------------------------------
+---------------------------------------------------------3.  G-code Interpreter -----------------------------------------------------------------------------
      What is motion engine ..?
+     Technolegies used 
+      -Python wrapper 
      what it consist..?
      what are the thing i  need to create a motion engine ..?
      line 154 
@@ -665,7 +667,8 @@ Steps to Build qt Application
  # Below i written about interpreter -RS274NGC
   file location: linuxcnc/src/emc/rs274ngc/
 
----------------------------------------------------------5. GUI------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------5. GUI--------------------------------------------------------------------------------------------------
      Here there using 3-4 different type of GUI
       1. QT
       2. tkinter(python libraries)

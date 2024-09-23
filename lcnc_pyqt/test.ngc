@@ -1,0 +1,6 @@
+G21           ; Set units to millimeters
+G0 X10 Y10    ; Rapid move to X=10, Y=10
+G1 X20 Y20 F1500  ; Linear move to X=20, Y=20 with feed rate of 1500
+G2 X25 Y25 I5 J0  ; Clockwise arc to X=25, Y=25 with center offset I5, J0
+G3 X30 Y30 I-5 J0 ; Counterclockwise arc to X=30, Y=30 with center offset I-5, J0
+M30           ; End program
