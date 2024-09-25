@@ -402,7 +402,7 @@ Steps to Build qt Application
      in this G-code parsing  line-1580
 ---------------------------------------------------------3.  G-code Interpreter -----------------------------------------------------------------------------
      What is motion engine ..?
-     Technolegies used 
+     Technolegies used :
       -Python wrapper 
      what it consist..?
      what are the thing i  need to create a motion engine ..?
@@ -666,10 +666,12 @@ Steps to Build qt Application
  #upto this about file G code file handling and adding filters 
  # Below i written about interpreter -RS274NGC
   file location: linuxcnc/src/emc/rs274ngc/
+  just lake look at -linuxcnc/src/emc/nml_intf
+  Output of the interpreted g-code  manuplated  at - linuxcnc/src/libnml/posemath/posemath.cc
 
 
 ---------------------------------------------------------5. GUI--------------------------------------------------------------------------------------------------
-     Here there using 3-4 different type of GUI
+      Technolegies used :
       1. QT
       2. tkinter(python libraries)
       3. GTK+
