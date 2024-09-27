@@ -676,3 +676,8 @@ Steps to Build qt Application
       2. tkinter(python libraries)
       3. GTK+
       4. OpenGL 
+
+      1. Main configration selection window custamization in 
+       linuxcnc/tcl/bin/pickconfig.tcl - logo and welcome test and  type of machine those things we can modify here.
+       if you want change the intro gif you have modify in  .ini file. 
+       

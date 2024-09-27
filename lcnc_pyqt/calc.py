@@ -1,62 +1,96 @@
-# import tkinter as tk
-# from tkinter import Toplevel
+import sys
+from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QVBoxLayout, QLabel, QDial
+from PyQt5.QtCore import QSize, Qt  # Import Qt for alignment
+from PyQt5.QtGui import QPainter, QColor, QBrush, QFont
 
-# # Function to create a new window
-# def open_window(window_number):
-#     new_window = Toplevel(root)
-#     new_window.title(f"Window {window_number}")
-#     new_window.geometry("300x200")
-    
-#     label = tk.Label(new_window, text=f"This is Window {window_number}", font=("Arial", 14))
-#     label.pack(pady=20)
-    
-#     # You can add additional widgets to each window as needed
-#     close_button = tk.Button(new_window, text="Close", command=new_window.destroy)
-#     close_button.pack(pady=10)
+class LEDButton(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self.led_on = False  # Default LED state is OFF
+        self.setFont(QFont('Arial', 12, QFont.Bold))
+        self.setFixedSize(120, 60)  # Set fixed size for buttons
 
-# # Create the main window
-# root = tk.Tk()
-# root.title("Main Window")
-# root.geometry("400x300")
+    def toggle_led(self):
+        """Toggle the LED state when the button is pressed."""
+        self.led_on = not self.led_on
+        self.update()  # Trigger a repaint of the button
 
-# # Create label in the main window
-# label = tk.Label(root, text="Click a button to open a new window", font=("Arial", 16))
-# label.pack(pady=20)
+    def paintEvent(self, event):
+        """Override the paintEvent to draw the button and the LED."""
+        super().paintEvent(event)
 
-# # Create buttons to open different windows
-# for i in range(1, 6):  # Create 5 buttons
-#     button = tk.Button(root, text=f"Open Window {i}", command=lambda i=i: open_window(i), font=("Arial", 12))
-#     button.pack(pady=5)
+        # Create QPainter object to draw the LED on the button
+        painter = QPainter(self)
 
-# # Run the main event loop
-# root.mainloop()
+        # Set the LED color based on the current state
+        led_color = QColor("green") if self.led_on else QColor("red")
 
-import os
+        # Set the painter's brush to the LED color
+        painter.setBrush(QBrush(led_color))
 
-# Define file path
-file_path = "hello.txt"  # You can change this to "example.txt" if you prefer
+        # Draw the LED (small circle) on the top-right corner of the button
+        led_size = 10
+        painter.drawEllipse(self.width() - led_size - 10, 10, led_size, led_size)
+        if self.led_on:
+            led_color= QColor("green")
+        elif self.led_off:
+            led_color= QColor("red")
 
-# 1. Creating and Writing to the File
-def create_and_write_file():
-    with open(file_path, "w") as file:  # Using the file_path variable here
-        file.write("Hello, this is a sample text file.\n")
-        file.write("This is the second line.\n")
-    print(f"File '{file_path}' created and written successfully.")
+class LEDButtonPanel(QWidget):
+    def __init__(self):
+        super().__init__()
 
-# 2. Reading the File
-def read_file():
-    if os.path.exists(file_path):
-        with open(file_path, "r") as file:  # Using the file_path variable here
-            content = file.read()
-        print("File content:")
-        print(content)
-    else:
-        print(f"File '{file_path}' does not exist.")
+        self.setWindowTitle("Buttons with Integrated LED, Status Panel, and Dial")
+        self.setGeometry(100, 100, 300, 400)
 
-# Main Function
+        # Create buttons with integrated LED
+        self.cycle_start_btn = LEDButton("CYCLE START")
+        self.pause_btn = LEDButton("PAUSE")
+        self.stop_btn = LEDButton("STOP")
+
+        # Status panel to display messages
+        self.status_label = QLabel("Status: Ready", self)
+        self.status_label.setFont(QFont('Arial', 10))
+        self.status_label.setStyleSheet("background-color: #e0e0e0; padding: 10px; border: 1px solid #333333;")
+        self.status_label.setAlignment(Qt.AlignCenter)  # Align text to center
+
+        # Create a QDial (rotary dial widget)
+        self.dial = QDial(self)
+        self.dial.setMinimum(0)
+        self.dial.setMaximum(100)
+        self.dial.setValue(50)  # Set default value for the dial
+        self.dial.valueChanged.connect(self.dial_value_changed)  # Connect dial movement to status update
+
+        # Connect the buttons to toggle their LED and update the status panel
+        self.cycle_start_btn.clicked.connect(lambda: self.update_status(self.cycle_start_btn, "Cycle Start"))
+        self.cycle_start_btn.clicked.connect(self.cycle_start_btn.toggle_led);
+        self.pause_btn.clicked.connect(lambda: self.update_status(self.pause_btn, "Pause"))
+        self.pause_btn.clicked.connect(self.pause_btn.toggle_led);
+        self.stop_btn.clicked.connect(lambda: self.update_status(self.stop_btn, "Stop"))
+        self.stop_btn.clicked.connect(self.stop_btn.toggle_led);
+
+        # Layout to organize buttons, dial, and status panel vertically
+        layout = QVBoxLayout()
+        layout.addWidget(self.cycle_start_btn)
+        layout.addWidget(self.pause_btn)
+        layout.addWidget(self.stop_btn)
+        layout.addWidget(self.dial)  # Add the QDial to the layout
+        layout.addWidget(self.status_label)  # Add the status label at the bottom
+
+        self.setLayout(layout)
+
+    def update_status(self, button, name):
+        """Update the status panel when a button is clicked."""
+        status = "ON" if button.led_on else "OFF"
+        self.status_label.setText(f"Status: {name} button is {status}")
+
+    def dial_value_changed(self):
+        """Update the status panel with the current dial value."""
+        value = self.dial.value()
+        self.status_label.setText(f"Motor Speed - {value}")
+
 if __name__ == "__main__":
-    # Create and write to the file
-    create_and_write_file()
-
-    # Read and display the file content
-    read_file()
+    app = QApplication(sys.argv)
+    window = LEDButtonPanel()
+    window.show()
+    sys.exit(app.exec_())
