@@ -666,6 +666,8 @@ Steps to Build qt Application
      #upto this about file G code file handling and adding filters 
  # Below i written about interpreter -RS274NGC
   file location: linuxcnc/src/emc/rs274ngc/
+  This folder consist of every fuctionality of interpreter
+  while compiling the file  its become a shared objecy file (librs274.so) - mentioned in linuxcnc/emc/rs274ngc/submakefile
   just lake look at -linuxcnc/src/emc/nml_intf
   Output of the interpreted g-code  manuplated  at - linuxcnc/src/libnml/posemath/posemath.cc
 

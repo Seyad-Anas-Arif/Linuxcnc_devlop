@@ -44,9 +44,9 @@ class LEDButtonPanel(QWidget):
         self.setGeometry(100, 100, 300, 400)
 
         # Create buttons with integrated LED
-        self.cycle_start_btn = LEDButton("CYCLE START")
-        self.pause_btn = LEDButton("PAUSE")
-        self.stop_btn = LEDButton("STOP")
+        self.start_btn = LEDButton(" START")
+        self.fwd_btn = LEDButton("Forward")
+        self.rev_btn = LEDButton("Reverse")
 
         # Status panel to display messages
         self.status_label = QLabel("Status: Ready", self)
@@ -62,18 +62,18 @@ class LEDButtonPanel(QWidget):
         self.dial.valueChanged.connect(self.dial_value_changed)  # Connect dial movement to status update
 
         # Connect the buttons to toggle their LED and update the status panel
-        self.cycle_start_btn.clicked.connect(lambda: self.update_status(self.cycle_start_btn, "Cycle Start"))
-        self.cycle_start_btn.clicked.connect(self.cycle_start_btn.toggle_led);
-        self.pause_btn.clicked.connect(lambda: self.update_status(self.pause_btn, "Pause"))
-        self.pause_btn.clicked.connect(self.pause_btn.toggle_led);
-        self.stop_btn.clicked.connect(lambda: self.update_status(self.stop_btn, "Stop"))
-        self.stop_btn.clicked.connect(self.stop_btn.toggle_led);
+        self.start_btn.clicked.connect(lambda: self.update_status(self.start_btn, " Start"))
+        self.start_btn.clicked.connect(self.start_btn.toggle_led);
+        self.fwd_btn.clicked.connect(lambda: self.update_status(self.fwd_btn, "forward"))
+        self.fwd_btn.clicked.connect(self.fwd_btn.toggle_led);
+        self.rev_btn.clicked.connect(lambda: self.update_status(self.rev_btn, "Reverse."))
+        self.rev_btn.clicked.connect(self.rev_btn.toggle_led);
 
         # Layout to organize buttons, dial, and status panel vertically
         layout = QVBoxLayout()
-        layout.addWidget(self.cycle_start_btn)
-        layout.addWidget(self.pause_btn)
-        layout.addWidget(self.stop_btn)
+        layout.addWidget(self.start_btn)
+        layout.addWidget(self.fwd_btn)
+        layout.addWidget(self.rev_btn)
         layout.addWidget(self.dial)  # Add the QDial to the layout
         layout.addWidget(self.status_label)  # Add the status label at the bottom
 
