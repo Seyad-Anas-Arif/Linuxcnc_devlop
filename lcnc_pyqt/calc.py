@@ -49,7 +49,7 @@ class LEDButtonPanel(QWidget):
         self.rev_btn = LEDButton("Reverse")
 
         # Status panel to display messages
-        self.status_label = QLabel("Status: Ready", self)
+        self.status_label = QLabel("Motor - Ready", self)
         self.status_label.setFont(QFont('Arial', 10))
         self.status_label.setStyleSheet("background-color: #e0e0e0; padding: 10px; border: 1px solid #333333;")
         self.status_label.setAlignment(Qt.AlignCenter)  # Align text to center
@@ -81,8 +81,8 @@ class LEDButtonPanel(QWidget):
 
     def update_status(self, button, name):
         """Update the status panel when a button is clicked."""
-        status = "ON" if button.led_on else "OFF"
-        self.status_label.setText(f"Status: {name} button is {status}")
+        status = "off" if button.led_on else "on"
+        self.status_label.setText(f"Motor: {name} button is {status}")
 
     def dial_value_changed(self):
         """Update the status panel with the current dial value."""

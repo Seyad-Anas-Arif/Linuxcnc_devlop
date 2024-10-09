@@ -400,6 +400,31 @@ Steps to Build qt Application
      #file Location :linuxcnc/src/emc/motion/mot_priv.h
      main work at :linuxcnc/src/Axis/Axis.py
      in this G-code parsing  line-1580
+     
+     #define EMC_TRAJ_LINEAR_MOVE_TYPE                    ((NMLTYPE) 220)
+     static EMC_TRAJ_LINEAR_MOVE *emcTrajLinearMoveMsg;
+     void EMC_TRAJ_LINEAR_MOVE::update(CMS * cms)
+     {
+     EMC_TRAJ_CMD_MSG::update(cms);
+     EmcPose_update(cms, &end);
+     cms->update(type);
+     cms->update(vel);
+     cms->update(ini_maxvel);
+     cms->update(acc);
+     cms->update(feed_mode);
+     cms->update(indexer_jnum);
+     }
+
+     void EmcPose_update(CMS * cms, EmcPose * x)
+     {
+     PmCartesian_update(cms, &(x->tran));
+     cms->update(x->a);
+     cms->update(x->b);
+     cms->update(x->c);
+     cms->update(x->u);
+     cms->update(x->v);
+     cms->update(x->w);
+     }
 ---------------------------------------------------------3.  G-code Interpreter -----------------------------------------------------------------------------
      What is motion engine ..?
      Technolegies used :
@@ -681,5 +706,5 @@ Steps to Build qt Application
 
       1. Main configration selection window custamization in 
        linuxcnc/tcl/bin/pickconfig.tcl - logo and welcome test and  type of machine those things we can modify here.
-       if you want change the intro gif you have modify in  .ini file. 
-       
+       if you want change the intro-gif(INTRO_GRAPHIC = linuxcnc.gif) you have modify in  .ini file. 
+       XT2429-4
